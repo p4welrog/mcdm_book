@@ -6,7 +6,7 @@ select(profile) — buduje zadanie typu Gershona: warianty = metody pakietu, kry
                   (obowiązkowe: rodzaj danych, wymagana postać wyniku; punktowane 0–10 z wagami
                   wynikającymi z profilu) i rozwiązuje je przez compromise.
 
-Oceny metod w katalogu METHOD_PROFILES: dla SAW, SMART, TOPSIS (i częściowo ELECTRE III, PROMETHEE II, EXPROM II) oparte na zbiorze R9.2 (D. Górecka),
+Oceny metod w katalogu METHOD_PROFILES: dla SAW, SMART, TOPSIS (i częściowo ELECTRE III, PROMETHEE II, EXPROM II, BIPOLAR) oparte na zbiorze R9.2 (D. Górecka),
 dla pozostałych — oceny własne autora pakietu przez analogię; można je nadpisać (opcja `scores`).
 """
 from __future__ import annotations
@@ -194,6 +194,18 @@ METHOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "vikor": {"title": "VIKOR (7.3)", "caps": {"numeric", "ranking", "cardinal", "reference"}, "elicit": {"weights"},
               "grades": {"transparency": 6, "knowledge": 7, "effort": 9, "noncomp": 7, "uncertainty": 0, "consistency": 6},
               "source": "własne"},
+    "hybrid": {"title": "Metoda hybrydowa DEMATEL–ANP–VIKOR (7.4)",
+               "caps": {"numeric", "ranking", "cardinal", "reference", "dependence"}, "elicit": {"pairwise"},
+               "grades": {"transparency": 3, "knowledge": 3, "effort": 3, "noncomp": 7, "uncertainty": 1, "consistency": 6},
+               "source": "własne (DEMATEL + ANP + VIKOR)"},
+    "bipolar": {"title": "BIPOLAR (7.5)", "caps": {"numeric", "ranking", "reference"}, "elicit": {"weights"},
+                "grades": {"transparency": 3, "knowledge": 2, "effort": 2, "noncomp": 9, "uncertainty": 2, "consistency": 4},
+                "source": "R9.2 (transparency, knowledge, effort; kompletny ranking); pozostałe własne"},
+    "bipolar_sd": {"title": "BIPOLAR z dominacjami stochastycznymi (7.6)", "caps": {"stochastic", "ranking", "reference"},
+                   "elicit": {"weights"},
+                   "grades": {"transparency": 2, "knowledge": 2, "effort": 2, "noncomp": 9, "uncertainty": 10,
+                              "consistency": 4},
+                   "source": "własne (analogia do R9.2: BIPOLAR)"},
     "stochastic_dominance": {"title": "Dominacje stochastyczne (1.3, mcdm_cd)", "caps": {"stochastic"},
                              "elicit": set(), "no_preferences": True,
                              "grades": {"transparency": 4, "knowledge": 3, "effort": 10, "noncomp": 10, "uncertainty": 10,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, anp, electre, promethee, reference, selection
+from . import additive, ahp, anp, bipolar, electre, hybrid, promethee, reference, selection
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -124,6 +124,30 @@ METHODS: Dict[str, Dict[str, Any]] = {
                      "needs": "jak PROMETHEE II z dominacjami stochastycznymi",
                      "options": {"risk": promethee.RISKS, "dominances": "jak w promethee_ii_sd",
                                  "divide": "dzielenie przepływów przez m − 1 (domyślnie false)"}},
+    "dematel": {"fn": hybrid.dematel, "chapter": "7.4", "title": "DEMATEL (zależności między elementami)",
+                "needs": "elementy systemu jako warianty, \"influence\" — macierz ocen wpływu 0–4 (wiersz → kolumna) "
+                         "albo lista macierzy ekspertów; criteria może być puste",
+                "options": {}},
+    "hybrid": {"fn": hybrid.hybrid, "chapter": "7.4", "title": "Metoda hybrydowa DEMATEL–ANP–VIKOR",
+               "needs": "oceny liczbowe; kryteria z polem \"cluster\"; \"cluster_influence\" i \"criteria_influence\" — "
+                        "macierze ocen wpływu 0–4 (grupy, kryteria); wagi wyznacza metoda",
+               "options": {"alpha": "próg α-cięcia macierzy T grup (7.30)", "alpha_criteria": "próg α dla T kryteriów",
+                           "q": "VIKOR: waga strategii większości (0,5)", "ideal": "VIKOR: f* (lista)",
+                           "anti_ideal": "VIKOR: f_* (lista)", "w2": "both | either",
+                           "limit": "auto | power | cesaro"}},
+    "bipolar": {"fn": bipolar.bipolar, "chapter": "7.5", "title": "BIPOLAR",
+                "needs": "oceny liczbowe, wagi, progi q i weta v (najmniejsza dopuszczalna ocena); \"good\", \"bad\" — "
+                         "obiekty referencyjne „dobre” i „złe” (wiersze ocen)",
+                "options": {"s": "próg zgodności (0–1)", "weights": "given | deciles (7.83) | objects (przykład 7.13)",
+                            "veto_decile": "progi weta = q-ty decyl obiektów „dobrych” (7.87)",
+                            "local_preference": "funkcje lokalnej preferencji (7.76)–(7.80)",
+                            "position": "classic (7.52)–(7.53) | counts (7.81)–(7.82) — pełny ranking",
+                            "modify": "good | bad — modyfikacja zbioru referencyjnego (7.67), (7.69)",
+                            "b2_prime": "kategoria B2′ (7.70)", "veto_test": "formula | example (jak przykłady 7.7–7.12)"}},
+    "bipolar_sd": {"fn": bipolar.bipolar_sd, "chapter": "7.6", "title": "BIPOLAR z dominacjami stochastycznymi",
+                   "needs": "oceny i obiekty referencyjne jako rozkłady {values, probs} lub {obs}; wagi; progi q, p, "
+                            "v (najmniejsza dopuszczalna wartość oczekiwana)",
+                   "options": {"risk": promethee.RISKS, "dominances": "jak w promethee_ii_sd"}},
     "vikor": {"fn": reference.vikor, "chapter": "7.3", "title": "VIKOR",
               "needs": "oceny liczbowe, kierunki, wagi",
               "options": {"q": "waga strategii większości (domyślnie 0,5)",
