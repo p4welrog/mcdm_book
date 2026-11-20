@@ -75,7 +75,10 @@ def main():
         expected = {"P2.1": ("saw", "a3"), "P2.2": ("scoring", "a3"), "P2.3": ("fsaw", "a3"), "P2.7": ("smart", "a3, a4"),
                     "P2.11": ("smarter", "a4"), "P3.4": ("ahp", "a6"), "P3.7": ("rembrandt", "a1"),
                     "P3.10": ("fuzzy_ahp", "a1"), "P3.12": ("anp", "a1"), "P3.13": ("anp", "dostawca Y"),
-                    "P3.14": ("fuzzy_anp", "a1"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
+                    "P3.14": ("fuzzy_anp", "a1"), "P6.2": ("promethee_i", "a5"), "P6.5": ("promethee_ii", "a1"),
+                    "P6.7": ("promethee_ii_veto", "a5"), "P6.8": ("exprom", "a3"), "P6.10": ("exprom_veto", "a5"),
+                    "P6.11": ("promethee_ii_sd", "a4"), "P6.12": ("promethee_ii_sd", "a8"),
+                    "P6.14": ("exprom_ii_sd", "a4"), "P6.16": ("exprom_ii_sd", "a2"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
                     "P7.4": ("vikor", "a3"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
         for ex, (meth, best) in expected.items():
             page.select_option("#bk-method", meth)
@@ -127,6 +130,21 @@ def main():
         page.click("#bk-run")
         check("0,8285" in page.locator("#bk-out").inner_text(), "rozmyta ANP: wynik przykładu 3.14")
         shot("anp")
+
+        # --- PROMETHEE / EXPROM: relacje, weto jak w druku, edycja rozkładu ---
+        page.select_option("#bk-method", "promethee_i"); page.select_option("#bk-example", "P6.2"); page.click("#bk-load")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("Relacje PROMETHEE I" in out and "a5 → a2" in out, "PROMETHEE I: relacje i graf (przykład 6.2)")
+        page.select_option("#bk-method", "promethee_ii_veto"); page.select_option("#bk-example", "P6.7"); page.click("#bk-load")
+        page.select_option("#bk-options select[data-o=veto_direction]", "example"); page.click("#bk-run")
+        check(page.locator("#bk-out .note.ok").inner_text().endswith("a2"), "PROMETHEE II z wetem: wariant z druku")
+        page.select_option("#bk-method", "promethee_ii_sd"); page.select_option("#bk-example", "P6.11"); page.click("#bk-load")
+        check(page.input_value("#bk-editor input[data-i='0'][data-k='0']").startswith("0:0,6"), "rozkład w komórce edytora")
+        page.fill("#bk-editor input[data-i='0'][data-k='0']", "0:0,1 4:0,9"); page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("Dominacje stochastyczne" in out and "1,9259" not in out, "PROMETHEE II SD: edycja rozkładu zmienia wynik")
+        shot("promethee")
 
         # --- dobór metody ---
         page.click("#sel-box summary")

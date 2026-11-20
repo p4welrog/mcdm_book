@@ -136,6 +136,31 @@ METHOD_PROFILES: Dict[str, Dict[str, Any]] = {
                   "elicit": {"pairwise"},
                   "grades": {"transparency": 2, "knowledge": 2, "effort": 2, "noncomp": 2, "uncertainty": 7, "consistency": 6},
                   "source": "własne"},
+    "promethee_i": {"title": "PROMETHEE I (6.2)", "caps": {"numeric"}, "elicit": {"weights"},
+                    "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 6, "uncertainty": 3, "consistency": 4},
+                    "source": "R9.2 (PROMETHEE II: transparency, knowledge, effort); pozostałe własne"},
+    "promethee_ii": {"title": "PROMETHEE II (6.2)", "caps": {"numeric", "ranking"}, "elicit": {"weights"},
+                     "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 6, "uncertainty": 3, "consistency": 4},
+                     "source": "R9.2 (transparency, knowledge, effort); pozostałe własne"},
+    "promethee_ii_veto": {"title": "PROMETHEE II z progami weta (6.3)", "caps": {"numeric", "ranking"},
+                          "elicit": {"weights"}, "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 9, "uncertainty": 3, "consistency": 4},
+                          "source": "R9.2 (PROMETHEE II: transparency, knowledge, effort); pozostałe własne"},
+    "exprom": {"title": "EXPROM II (6.4)", "caps": {"numeric", "ranking", "cardinal"}, "elicit": {"weights"},
+               "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 6, "uncertainty": 3, "consistency": 4},
+               "source": "R9.2 (transparency, knowledge, effort); pozostałe własne"},
+    "exprom_veto": {"title": "EXPROM II z progami weta (6.5)", "caps": {"numeric", "ranking", "cardinal"},
+                    "elicit": {"weights"}, "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 9, "uncertainty": 3, "consistency": 4},
+                    "source": "R9.2 (EXPROM II: transparency, knowledge, effort); pozostałe własne"},
+    "promethee_ii_sd": {"title": "PROMETHEE II z wetem i dominacjami stochastycznymi (6.6)",
+                        "caps": {"stochastic", "ranking"}, "elicit": {"weights"},
+                        "grades": {"transparency": 2, "knowledge": 3, "effort": 5, "noncomp": 9, "uncertainty": 10,
+                                   "consistency": 5},
+                        "source": "własne"},
+    "exprom_ii_sd": {"title": "EXPROM II z wetem i dominacjami stochastycznymi (6.7)",
+                     "caps": {"stochastic", "ranking", "cardinal"}, "elicit": {"weights"},
+                     "grades": {"transparency": 2, "knowledge": 3, "effort": 5, "noncomp": 9, "uncertainty": 10,
+                                "consistency": 5},
+                     "source": "własne"},
     "topsis": {"title": "TOPSIS (7.1)", "caps": {"numeric", "ranking", "cardinal", "reference"}, "elicit": {"weights"},
                "grades": {"transparency": 6, "knowledge": 10, "effort": 10, "noncomp": 3, "uncertainty": 0, "consistency": 4},
                "source": "R9.2"},
@@ -302,13 +327,13 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
     res["titles"] = {mth: cat[mth]["title"] for mth in names}
     res["grade_sources"] = {mth: cat[mth]["source"] for mth in names}
     res["elimination_reasons"] = {m: reasons[m] for m in names if m in reasons}
-    res["notes"].append("Oceny metod: SAW, SMART i TOPSIS na podstawie zbioru R9.2 (D. Górecka); pozostałe — "
+    res["notes"].append("Oceny metod: SAW, SMART, TOPSIS, PROMETHEE II i EXPROM II (częściowo) na podstawie zbioru R9.2 "
+                        "(D. Górecka); pozostałe — "
                         "oceny własne autora pakietu; można je nadpisać opcją scores.")
     top = res["ranking"][:2]
     if not top:
         res["notes"].append("Żadna metoda pakietu nie spełnia wymagań obowiązkowych — zob. elimination_reasons. "
-                            "Rozważ złagodzenie wymagań (np. output = best) albo metody spoza pakietu "
-                            "(np. PROMETHEE II / EXPROM II z dominacjami stochastycznymi, rozdz. 6).")
+                            "Rozważ złagodzenie wymagań (np. output = best).")
     if len(top) == 2:
         res["notes"].append(f"Zalecane: {cat[top[0]]['title']}; do sprawdzenia odporności wyniku — "
                             f"{cat[top[1]]['title']}.")

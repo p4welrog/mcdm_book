@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, anp, reference, selection
+from . import additive, ahp, anp, promethee, reference, selection
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -63,6 +63,39 @@ METHODS: Dict[str, Dict[str, Any]] = {
                      "needs": "oceny [l, m, u] ≥ 0, kierunki, wagi",
                      "options": {"cost_norm": reference.COST_NORMS,
                                  "reference": "{ideal: [...], anti_ideal: [...]} — własne punkty odniesienia"}},
+    "promethee_i": {"fn": promethee.promethee_i, "chapter": "6.2", "title": "PROMETHEE I (ranking częściowy)",
+                    "needs": "oceny liczbowe, kierunki, wagi; w kryteriach type (1–6) i progi q, p, s (tabl. 6.1)",
+                    "options": {"divide": "dzielenie przepływów przez m − 1 (domyślnie true)"},
+                    "criterion_types": promethee.TYPES},
+    "promethee_ii": {"fn": promethee.promethee_ii, "chapter": "6.2", "title": "PROMETHEE II",
+                     "needs": "jak PROMETHEE I", "options": {"divide": "dzielenie przepływów przez m − 1 (domyślnie true)"},
+                     "criterion_types": promethee.TYPES},
+    "promethee_ii_veto": {"fn": promethee.promethee_ii_veto, "chapter": "6.3", "title": "PROMETHEE II z progami weta",
+                          "needs": "oceny liczbowe, kierunki, wagi; w kryteriach progi q, p, v",
+                          "options": {"veto_direction": promethee.VETO_DIRECTIONS,
+                                      "divide": "dzielenie przepływów przez m − 1 (domyślnie false, jak 6.23)"}},
+    "exprom": {"fn": promethee.exprom, "chapter": "6.4", "title": "EXPROM (I i II)",
+               "needs": "jak PROMETHEE; opcjonalnie L (granica silnej preferencji) w kryteriach",
+               "options": {"ranking": "complete (EXPROM II, domyślnie) | partial (EXPROM I)",
+                           "divide": "dzielenie przepływów przez m − 1 (domyślnie true)"},
+               "criterion_types": promethee.TYPES},
+    "exprom_veto": {"fn": promethee.exprom_veto, "chapter": "6.5", "title": "EXPROM II z progami weta",
+                    "needs": "oceny liczbowe, kierunki, wagi; w kryteriach progi q, p, v",
+                    "options": {"veto_direction": promethee.VETO_DIRECTIONS,
+                                "divide": "dzielenie przepływów przez m − 1 (domyślnie false, jak 6.38)"}},
+    "promethee_ii_sd": {"fn": promethee.promethee_ii_sd, "chapter": "6.6",
+                        "title": "PROMETHEE II z progami weta i dominacjami stochastycznymi",
+                        "needs": "oceny jako rozkłady {values, probs} lub {obs}; wagi; progi p, v (opcjonalnie q) — "
+                                 "liczby albo [α, β] (α + β·μ)",
+                        "options": {"risk": promethee.RISKS,
+                                    "dominances": "lista uznawanych dominacji, np. [\"FSD\", \"SSD\", \"AFSD:0.333\", "
+                                                  "\"ASSD:0.2\"] (prawie dominacje ze stopniem ε)",
+                                    "divide": "dzielenie przepływów przez m − 1 (domyślnie false)"}},
+    "exprom_ii_sd": {"fn": promethee.exprom_ii_sd, "chapter": "6.7",
+                     "title": "EXPROM II z progami weta i dominacjami stochastycznymi",
+                     "needs": "jak PROMETHEE II z dominacjami stochastycznymi",
+                     "options": {"risk": promethee.RISKS, "dominances": "jak w promethee_ii_sd",
+                                 "divide": "dzielenie przepływów przez m − 1 (domyślnie false)"}},
     "vikor": {"fn": reference.vikor, "chapter": "7.3", "title": "VIKOR",
               "needs": "oceny liczbowe, kierunki, wagi",
               "options": {"q": "waga strategii większości (domyślnie 0,5)",
