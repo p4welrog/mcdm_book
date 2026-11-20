@@ -63,4 +63,6 @@ Rozbieżności w przykładach (P2.1, P2.7, P2.11, P7.1, P7.4) opisano w komentar
 
 `index.html` to jeden plik, który można otworzyć w przeglądarce albo opublikować przez GitHub Pages (Settings → Pages → Deploy from a branch → `main`, `/ (root)`). Przy pierwszym otwarciu potrzebny jest internet, bo Pyodide 0.26.4 jest ładowany z `cdn.jsdelivr.net`. Pliki wczytane przez użytkownika nie opuszczają przeglądarki.
 
+Test strony w przeglądarce: `python tests/e2e_browser.py`. Skrypt sprawdza przykłady z książki we wszystkich zakładkach, edytor AHP, dobór metody i dialogi STEM-DPR oraz INSDECM. Wymaga Playwright; opcje i sposób uruchomienia bez dostępu do CDN opisuje nagłówek skryptu.
+
 Plik buduje skrypt `python web/build.py`: łączy szablon `web/template.html`, kod łączący stronę z pakietami (`web/web.py`), źródła obu pakietów, pliki .mcf z płyty oraz bibliotekę [xlrd](https://github.com/python-excel/xlrd) 2.0.1 (licencja BSD, `web/vendor/`). Po każdej zmianie w pakietach trzeba go uruchomić ponownie.

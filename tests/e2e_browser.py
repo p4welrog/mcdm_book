@@ -1,0 +1,186 @@
+"""Test strony index.html w przeglądarce (Playwright): przykłady z książki we wszystkich zakładkach.
+
+Uruchomienie (z katalogu repozytorium, po `python web/build.py`):
+
+    pip install playwright && python -m playwright install chromium
+    python tests/e2e_browser.py                         # Pyodide z cdn.jsdelivr.net
+    python tests/e2e_browser.py --pyodide node_modules/pyodide --chrome /usr/bin/google-chrome
+
+--pyodide KATALOG — lokalna kopia Pyodide 0.26.4 (np. `npm install pyodide@0.26.4`), gdy CDN jest niedostępny;
+--chrome ŚCIEŻKA  — systemowa przeglądarka zamiast pobranej przez Playwright;
+--shots KATALOG   — zrzuty ekranu kolejnych etapów.
+Kod wyjścia 0, gdy wszystkie kontrole przeszły. Plik nie jest zbierany przez pytest (nazwa nie zaczyna się od test_).
+"""
+import argparse
+import mimetypes
+import sys
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parents[1]
+CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"
+PAGE = "https://test.local/index.html"
+
+failures = []
+
+
+def check(cond, label, detail=""):
+    print(("OK   " if cond else "FAIL ") + label + (f" — {detail}" if detail else ""))
+    if not cond:
+        failures.append(label)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--index", default=str(ROOT / "index.html"))
+    ap.add_argument("--pyodide")
+    ap.add_argument("--chrome")
+    ap.add_argument("--shots")
+    a = ap.parse_args()
+    index = Path(a.index)
+    pyo = Path(a.pyodide) if a.pyodide else None
+    shots = Path(a.shots) if a.shots else None
+    if shots:
+        shots.mkdir(parents=True, exist_ok=True)
+
+    def route(r):
+        url = r.request.url
+        if pyo and url.startswith(CDN):
+            f = pyo / url[len(CDN):].split("?")[0]
+            if f.exists():
+                return r.fulfill(path=str(f), content_type=mimetypes.guess_type(str(f))[0] or "application/octet-stream")
+            return r.fulfill(status=404, body="nf")
+        if url.startswith("https://test.local/"):
+            return r.fulfill(path=str(index), content_type="text/html; charset=utf-8")
+        return r.continue_()
+
+    def shot(name):
+        if shots:
+            page.screenshot(path=str(shots / f"{name}.png"), full_page=True)
+
+    with sync_playwright() as p:
+        kw = {"executable_path": a.chrome, "args": ["--no-sandbox"]} if a.chrome else {}
+        browser = p.chromium.launch(**kw)
+        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: m.type == "error" and errors.append(m.text))
+        page.route("**/*", route)
+        page.goto(PAGE)
+        page.wait_for_selector("#loading", state="hidden", timeout=180000)
+        check(page.locator("#dist-table tr").count() > 2, "ładowanie Pyodide i pakietów")
+
+        # --- zakładka rankingu: przykłady z książki ---
+        expected = {"P2.1": ("saw", "a3"), "P2.2": ("scoring", "a3"), "P2.3": ("fsaw", "a3"), "P2.7": ("smart", "a3, a4"),
+                    "P2.11": ("smarter", "a4"), "P3.4": ("ahp", "a6"), "P3.7": ("rembrandt", "a1"),
+                    "P3.10": ("fuzzy_ahp", "a1"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
+                    "P7.4": ("vikor", "a3"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
+        for ex, (meth, best) in expected.items():
+            page.select_option("#bk-method", meth)
+            page.select_option("#bk-example", ex)
+            page.click("#bk-load")
+            page.click("#bk-run")
+            txt = page.locator("#bk-out .note.ok").inner_text()
+            check(txt.endswith(best), f"{ex} ({meth})", txt)
+            shot(f"rank_{ex}")
+
+        # --- edytor AHP: bieżąca zgodność i autouzupełnianie odwrotności ---
+        page.select_option("#bk-method", "ahp"); page.select_option("#bk-example", "P3.4"); page.click("#bk-load")
+        page.select_option("#bk-options select[data-o=method]", "saaty")
+        check("γ = 0,006" in page.locator("[data-check='cc']").inner_text(), "AHP: zgodność macierzy kryteriów na żywo")
+        sel = "table[data-matrix='c:f1'] input[data-mi='0'][data-mj='5']"
+        page.fill(sel, "1/9"); page.dispatch_event(sel, "input")
+        check(page.input_value("table[data-matrix='c:f1'] input[data-mi='5'][data-mj='0']") == "9", "AHP: odwrotność")
+        check("niezgodne" in page.locator("[data-check='c:f1']").inner_text(), "AHP: wykrycie niezgodności")
+
+        # --- puste zadanie AHP ---
+        page.select_option("#bk-example", ""); page.click("#bk-load")
+        for tid, vals in (("cc", {(0, 1): "3"}), ("c:f1", {(0, 1): "5", (0, 2): "7", (1, 2): "3"}),
+                          ("c:f2", {(0, 1): "1/3", (0, 2): "1/5", (1, 2): "1/2"})):
+            for (i, j), v in vals.items():
+                s = f"table[data-matrix='{tid}'] input[data-mi='{i}'][data-mj='{j}']"
+                page.fill(s, v); page.dispatch_event(s, "input")
+        page.click("#bk-run")
+        check(page.locator("#bk-out .note.ok").inner_text().endswith("a1"), "AHP: zadanie wpisane od zera")
+
+        # --- dobór metody ---
+        page.click("#sel-box summary")
+        page.check("input[name=sel-data][value=qualitative]")
+        page.check("input[name=sel-pref][value=pairwise]")
+        page.uncheck("input[name=sel-pref][value=weights]")
+        page.click("#sel-run")
+        first = page.locator("#sel-out tbody tr").first.inner_text()
+        check("AHP" in first, "dobór metody: porównania parami → AHP", first.replace("\t", " | "))
+        shot("select")
+        page.locator("#sel-out [data-use]").first.click()
+        check(page.input_value("#bk-method") == "ahp", "dobór metody: przycisk „Użyj”")
+
+        # --- edycja zadania i błędne dane (TOPSIS) ---
+        page.select_option("#bk-method", "topsis"); page.select_option("#bk-example", "P7.1"); page.click("#bk-load")
+        page.fill("#bk-editor input[data-i='3'][data-k='2']", "20"); page.click("#bk-run")
+        check(page.locator("#bk-out .note.ok").inner_text().endswith("a4"), "TOPSIS: zmiana oceny zmienia wynik")
+        page.click("#bk-add-var"); page.click("#bk-run")
+        check(page.locator("#bk-out table").first.locator("tbody tr").count() == 10, "TOPSIS: dodanie wariantu")
+        page.fill("#bk-editor input[data-i='0'][data-k='0']", "abc"); page.click("#bk-run")
+        check("Niepoprawna liczba" in page.locator("#bk-out .note.bad").inner_text(), "TOPSIS: komunikat o błędnych danych")
+
+        # --- zakładki programów z płyty (mcdm_cd) ---
+        page.click("nav button[data-tab=dom]")
+        page.wait_for_selector("#dom-table table")
+        row = page.locator("#dom-table tr").nth(2).locator("td").all_inner_texts()
+        check(row[:4] == ["a2", "FSD", "", "FSD"], "wykryte dominacje (przykład 8.4)", str(row[:4]))
+
+        page.click("nav button[data-tab=stdom]")
+        page.check("#sd-afsd"); page.click("#sd-run")
+        check("0,2500" in page.locator("#sd-report").inner_text(), "StDom: AFSD ε = 0,25 (przykład 1.10)")
+
+        page.click("nav button[data-tab=stem]")
+        page.click("#stem-start")
+
+        def q(scope, text):
+            page.locator(f"{scope} .question button", has_text=text).first.click()
+
+        q("#stem-q", "Nie"); q("#stem-q", "Tak"); q("#stem-q", "X3")
+        page.fill("#stem-thr", "6"); page.click("#stem-thr-ok"); q("#stem-q", "Tak")
+        check(page.locator("#stem-log .note").last.inner_text().endswith("a3"), "STEM-DPR (przykład 8.2)")
+
+        page.click("nav button[data-tab=insdecm]")
+        page.click("#ins-start")
+
+        def params(sel_):
+            for pp, psi in sel_.items():
+                page.check(f"#pp-{pp}")
+                if psi is not None:
+                    page.fill(f"#psi-{pp}", str(psi))
+            page.click("#pp-ok")
+
+        params({8: "6"}); params({}); params({}); params({})
+        q("#ins-q", "Tak"); q("#ins-q", "Nie")
+        page.select_option("#c-k", "0"); page.select_option("#c-p", "8"); page.fill("#c-v", "0,5"); page.click("#c-ok")
+        q("#ins-q", "Tak"); q("#ins-q", "Nie")
+        params({}); params({8: "5"}); params({}); params({})
+        q("#ins-q", "Tak"); q("#ins-q", "Nie")
+        page.select_option("#c-k", "1"); page.select_option("#c-p", "8"); page.fill("#c-v", "0,65"); page.click("#c-ok")
+        q("#ins-q", "Tak"); q("#ins-q", "Nie")
+        params({}); params({}); params({8: "7,5"}); params({})
+        q("#ins-q", "Tak"); q("#ins-q", "Tak"); q("#ins-q", "Tak")
+        check(page.locator("#ins-log .note").last.inner_text().endswith("a4, a5, a9"), "INSDECM (przykład 8.4)")
+        shot("insdecm")
+
+        page.click("nav button[data-tab=dane]")
+        page.select_option("#example", "Przyklad_1")
+        check("20 wariantów" in page.locator("#problem-info").inner_text(), "odczyt Przyklad_1.mcf")
+        page.set_input_files("#mcf-file", str(ROOT / "mcdm_cd" / "data" / "przyklad_8_1.mcf"))
+        page.wait_for_function("document.querySelector('#problem-info').innerText.includes('przyklad_8_1')", timeout=15000)
+        check("10 wariantów" in page.locator("#problem-info").inner_text(), "wczytanie pliku .mcf z dysku")
+
+        check(not errors, "brak błędów JavaScript", "; ".join(errors))
+        browser.close()
+
+    print(f"\n{'Wszystkie kontrole przeszły.' if not failures else f'Nieudane: {len(failures)}'}")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
