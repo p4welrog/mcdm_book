@@ -35,6 +35,20 @@ _SMART_DATA = [[28, 7, 30], [29, 6, 60], [20, 7, 50], [20, 2, 90]]
 
 _V6 = [f"a{i}" for i in range(1, 7)]
 
+_NET_312 = {"clusters": {"AS": ["f1", "f2"], "AT": ["f3", "f4"]}, "variants_cluster": "W",
+            "dependency_matrix": [[0, 0, 1, 1, 1, 1], [0, 0, 0, 1, 1, 1], [0, 1, 0, 0, 1, 1],
+                                  [0, 0, 0, 0, 1, 1], [0, 1, 0, 1, 0, 0], [0, 1, 1, 0, 0, 0]],
+            "comparisons": {"f1": {"AT": [[1, 5], [None, 1]], "W": [[1, 3], [None, 1]]},
+                            "f2": {"W": [[1, 3], [None, 1]]},
+                            "f3": {"W": [[1, "1/9"], [None, 1]]},
+                            "f4": {"W": [[1, 7], [None, 1]]}}}
+_CRIT_312 = [{"name": "f1", "label": "adekwatność do warunków lokalnych"}, {"name": "f2", "label": "sposób zarządzania"},
+             {"name": "f3", "label": "możliwość realizacji"}, {"name": "f4", "label": "zasoby niezbędne do realizacji"}]
+# Przykład 3.13: priorytety wariantów w podsieciach (Super Decisions, kolumna Ideals, rys. 10–13);
+# kolejność wariantów: obecny dostawca, X, Y, Z
+_BOCR_313 = {"B": [0.932695, 0.422383, 0.978943, 1.0], "O": [0.287789, 1.0, 0.279291, 0.406939],
+             "C": [0.814394, 1.0, 0.300590, 0.394819], "R": [0.502724, 0.788117, 0.590836, 1.0]}
+
 EXAMPLES: Dict[str, Dict[str, Any]] = {
     "P2.1": {"title": "Przykład 2.1 — SAW, wybór konta w banku", "method": "saw",
              "options": {"normalization": "minmax"}, "problem": _banks("Wybór konta osobistego")},
@@ -149,6 +163,22 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                              [10, 1, 2, 2, 2, 8, 8], [10, 4, 7, 10, 10, 10, 10], [10, 5, 10, 10, 10, 10, 10],
                              [10, 0, 0, 10, 10, 10, 10], [10, 8, 10, 10, 10, 10, 10], [6, 9, 10, 10, 10, 5, 5],
                              [7, 4, 7, 10, 10, 7, 7])]}},
+    "P3.12": {"title": "Przykład 3.12 — ANP, wybór projektu inwestycyjnego", "method": "anp", "options": {},
+              "problem": {"name": "Przykład 3.12", "variants": ["a1", "a2"], "criteria": _CRIT_312, **_NET_312,
+                          "cluster_comparisons": {"AS": {"clusters": ["AT", "W"], "matrix": [[1, 5], [None, 1]]},
+                                                  "AT": {"clusters": ["AS", "W"], "matrix": [[1, "1/3"], [None, 1]]},
+                                                  "W": {"clusters": ["AS", "AT"], "matrix": [[1, 1], [None, 1]]}}}},
+    "P3.13": {"title": "Przykład 3.13 — ANP, synteza BOCR (priorytety podsieci z Super Decisions)", "method": "anp",
+              "options": {"formula": "multiplicative"},
+              "problem": {"name": "Wybór dostawcy", "variants": ["obecny dostawca", "dostawca X", "dostawca Y", "dostawca Z"],
+                          "criteria": [], "subnets": {k: {"priorities": v} for k, v in _BOCR_313.items()}}},
+    "P3.14": {"title": "Przykład 3.14 — rozmyta ANP (porównania komponentów w skali Changa)", "method": "fuzzy_anp",
+              "options": {},
+              "problem": {"name": "Przykład 3.14", "variants": ["a1", "a2"], "criteria": _CRIT_312, **_NET_312,
+                          "cluster_comparisons": {
+                              "AS": {"clusters": ["AT", "W"], "matrix": [[1, "silnie ważniejsze"], [None, 1]]},
+                              "AT": {"clusters": ["AS", "W"], "matrix": [[1, None], ["umiarkowanie ważniejsze", 1]]},
+                              "W": {"clusters": ["AS", "AT"], "matrix": [[1, "równoważne"], [None, 1]]}}}},
     "P7.1": {"title": "Przykład 7.1 — TOPSIS", "method": "topsis", "options": {"metric": 2},
              "problem": {"name": "Przykład 7.1", "variants": [f"a{i}" for i in range(1, 10)],
                          "criteria": [{"name": f"f{k + 1}", "direction": "max", "weight": w} for k, w in enumerate(_W7)],

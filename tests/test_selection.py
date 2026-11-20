@@ -45,6 +45,9 @@ def test_select_basic_profiles():
     assert sel(data=["numeric"], preferences=["ranks"], expertise="low", time="low")["best"] == ["smarter"]
     assert "smart" in sel(data=["numeric"], preferences=["swing"])["ranking"][:2]   # SAW z wagami rozpiętości to SMART liniowy
     assert sel(data=["stochastic"], output="best", preferences=["dialog"])["best"] == ["stem_dpr"]
+    r = sel(data=["numeric", "qualitative"], preferences=["pairwise"], interdependence=True)
+    assert r["ranking"] == ["anp", "fuzzy_anp"] and "niezależność" in r["elimination_reasons"]["ahp"]
+    assert sel(data=["fuzzy"], preferences=["pairwise"], interdependence=True)["best"] == ["fuzzy_anp"]
 
 
 def test_select_eliminations_and_reasons():

@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, reference, selection
+from . import additive, ahp, anp, reference, selection
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -41,6 +41,18 @@ METHODS: Dict[str, Dict[str, Any]] = {
     "fuzzy_ahp": {"fn": ahp.fuzzy_ahp, "chapter": "3.3", "title": "Rozmyty AHP (Mikhailov)",
                   "needs": "macierze porównań z trójkami [l, m, u] (lub nazwami ze skali Changa, tabl. 3.4)",
                   "options": {"alphas": "poziomy α (domyślnie 0; 0,2; …; 1)", "d": "tolerancja względem zera (domyślnie 1)"},
+                  "scale": {k: list(v) for k, v in ahp.CHANG_SCALE.items()}},
+    "anp": {"fn": anp.anp, "chapter": "3.4", "title": "ANP (sieć zależności, supermacierz)",
+            "needs": "clusters (komponenty kryteriów), influences lub dependency_matrix, comparisons {element: "
+                     "{komponent: macierz}}, cluster_comparisons lub cluster_weights; BOCR: subnets + bocr_weights",
+            "options": {"method": ahp.PRIORITY_METHODS, "limit": anp.LIMITS, "sinks": anp.SINKS,
+                        "read_from": "element, z którego kolumny supermacierzy granicznej odczytać wektor skali",
+                        "formula": anp.FORMULAS, "bocr_mode": "ideal (domyślnie, jak Super Decisions) | normal"}},
+    "fuzzy_anp": {"fn": anp.fuzzy_anp, "chapter": "3.5", "title": "Rozmyta ANP (analiza Changa)",
+                  "needs": "jak ANP; cluster_comparisons z trójkami [l, m, u] lub nazwami skali Changa (tabl. 3.4); "
+                           "porównania elementów ostre lub rozmyte",
+                  "options": {"method": ahp.PRIORITY_METHODS, "limit": anp.LIMITS, "sinks": anp.SINKS,
+                              "read_from": "jak w ANP", "formula": anp.FORMULAS, "bocr_mode": "ideal | normal"},
                   "scale": {k: list(v) for k, v in ahp.CHANG_SCALE.items()}},
     "compromise": {"fn": selection.compromise, "chapter": "9.3", "title": "Programowanie kompromisowe (L1, wzór 9.1)",
                    "needs": "oceny liczbowe, kierunki, wagi; kryteria obowiązkowe z polem mandatory: true",
