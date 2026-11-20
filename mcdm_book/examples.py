@@ -88,6 +88,47 @@ def _tri(name):
             "profiles": [[5, 4, 6, 3], [7, 6, 8, 8]], "categories": ["słabe", "średnie", "dobre"]}
 
 
+_D713 = [[15, 110, 9], [14, 56, 4], [18, 90, 6], [19, 120, 7], [15, 30, 8], [11, 18, 8], [12, 15, 6], [13, 15, 5],
+         [20, 25, 9], [13, 95, 7], [19, 65, 6], [9, 150, 5], [23, 58, 5], [15, 74, 4], [12, 80, 6], [12, 70, 4],
+         [20, 35, 5], [13, 50, 3], [15, 45, 3], [11, 78, 8]]
+_Z713 = [[7, 31, 1], [2, 65, 3], [4, 95, 4], [3, 5, 5], [12, 3, 5], [2, 14, 3], [7, 28, 2], [2, 32, 6], [5, 70, 4],
+         [3, 40, 3], [10, 50, 2], [11, 49, 1], [7, 85, 0], [2, 125, 5], [4, 55, 4], [3, 45, 1], [12, 15, 3],
+         [5, 25, 4], [11, 35, 6], [15, 53, 2]]
+_A713 = [[25, 115, 6], [18, 80, 8], [19, 35, 9], [10, 65, 5], [14, 13, 8], [15, 17, 13], [21, 13, 8], [14, 25, 9],
+         [8, 35, 1], [5, 15, 3]]
+
+
+def _bip79(name):
+    """Dane przykładów 7.9–7.12 (i rys. 1 przykładu 7.7 — obliczenia P7.7 odpowiadają tym danym)."""
+    return {"name": name, "variants": ["a1", "a2", "a3", "a4"],
+            "criteria": [{"name": "f1", "weight": 0.6, "q": 0.25, "v": 0}, {"name": "f2", "weight": 0.4, "q": 0.25, "v": 0}],
+            "values": [[1, 5], [3, 5], [4, 3], [5, 2]], "good": [[0, 6], [5, 6], [5, 0]], "bad": [[0, 2], [2, 0]]}
+
+
+def _bip713(name, **crit):
+    return {"name": name, "variants": [f"a{i}" for i in range(1, 11)],
+            "criteria": [{"name": f"f{k}", **crit} for k in range(1, 4)], "values": _A713, "good": _D713, "bad": _Z713}
+
+
+_C16 = ["c11 wartość historyczno-badawcza", "c12 wartość historyczno-techniczna", "c13 wartość emocjonalna",
+        "c14 wartość posiadanego oryginału", "c21 wartość historyczno-artystyczna", "c22 jakość artystyczna",
+        "c23 oddziaływanie artystyczne", "c31 wartość historyczno-muzyczna", "c32 jakość muzyczna",
+        "c33 oddziaływanie muzyczne", "c41 wartość użytkowa wizualna", "c42 wartość użytkowa muzyczna"]
+_G16 = ["C1 wartości historyczne"] * 4 + ["C2 wartości artystyczne"] * 3 + ["C3 wartości muzyczne"] * 3 + \
+       ["C4 wartości użytkowe"] * 2
+_T161 = [[10, 8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0], [4, 6, 10, 8, 8, 6, 10, 6, 10, 6, 10, 0],
+         [10, 10, 10, 8, 6, 10, 6, 6, 4, 4, 2, 0], [10, 10, 10, 9, 5, 8, 5, 9, 4, 5, 0, 0],
+         [0, 2, 4, 6, 6, 4, 4, 6, 6, 8, 8, 0], [0, 0, 2, 4, 8, 2, 2, 4, 4, 8, 8, 8],
+         [2, 2, 6, 8, 10, 6, 6, 8, 8, 10, 10, 10], [0, 0, 0, 0, 0, 10, 4, 10, 4, 10, 4, 4],
+         [0, 0, 0, 0, 0, 8, 10, 8, 10, 8, 10, 10], [0, 0, 0, 0, 0, 8, 10, 8, 10, 8, 10, 10],
+         [2, 4, 6, 8, 10, 6, 6, 8, 8, 10, 10, 10], [0, 0, 0, 0, 0, 8, 10, 8, 10, 8, 10, 10]]
+_O164 = [[0, 3, 1, 4, 4, 4, 1, 4, 1, 1, 2, 2], [3, 0, 1, 4, 2, 1, 0, 2, 1, 1, 2, 2], [2, 2, 0, 3, 2, 2, 1, 2, 1, 2, 4, 4],
+         [4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 3, 3], [3, 3, 3, 4, 0, 4, 4, 2, 2, 2, 4, 0], [2, 2, 2, 2, 3, 0, 2, 0, 0, 0, 4, 0],
+         [1, 1, 1, 4, 4, 4, 0, 0, 0, 0, 4, 0], [3, 3, 2, 4, 0, 0, 0, 0, 4, 4, 0, 4], [1, 1, 0, 2, 0, 0, 0, 4, 0, 4, 0, 4],
+         [1, 1, 0, 2, 0, 0, 0, 4, 4, 0, 0, 4], [0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0]]
+_O163 = [[2, 2, 2, 3], [3, 2, 0, 3], [3, 0, 3, 2], [0, 4, 4, 0]]
+
+
 def _obs(scores):
     """scores[k][osoba][wariant] → oceny wariantów jako obserwacje (rozkłady empiryczne)."""
     m = len(scores[0][0])
@@ -322,6 +363,46 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                          "values": [[list(t) for t in row] for row in _P73]}},
     "P7.4": {"title": "Przykład 7.4 — VIKOR, wybór konta w banku", "method": "vikor", "options": {"q": 0.5},
              "problem": _banks("Wybór konta osobistego")},
+    "P7.5": {"title": "Przykład 7.5 — DEMATEL (aspekty renowacji organów)", "method": "dematel", "options": {},
+             "problem": {"name": "Przykład 7.5", "variants": ["C1 wartości historyczne", "C2 wartości artystyczne",
+                                                             "C3 wartości muzyczne", "C4 wartości użytkowe"],
+                         "criteria": [], "influence": _O163}},
+    "P7.6": {"title": "Przykład 7.6 — metoda hybrydowa DEMATEL–ANP–VIKOR (renowacja organów)", "method": "hybrid",
+             "options": {"alpha": 0.1, "ideal": [10] * 12, "anti_ideal": [0] * 12},
+             "problem": {"name": "Renowacja pozytywu z Sokół (rozdz. 16)", "variants": [f"a{i}" for i in range(1, 13)],
+                         "criteria": [{"name": c, "cluster": g} for c, g in zip(_C16, _G16)],
+                         "values": [list(r) for r in zip(*_T161)], "cluster_influence": _O163,
+                         "criteria_influence": _O164}},
+    "P7.7": {"title": "Przykład 7.7 — BIPOLAR (dane z rys. 1; test weta jak w przykładzie)", "method": "bipolar",
+             "options": {"s": 0.5, "veto_test": "example"}, "problem": _bip79("Przykład 7.7")},
+    "P7.8": {"title": "Przykład 7.8 — BIPOLAR (2)", "method": "bipolar", "options": {"s": 0.4},
+             "problem": {"name": "Przykład 7.8", "variants": [f"a{i}" for i in range(1, 8)],
+                         "criteria": [{"name": f"f{k}", "weight": 0.25, "v": 1, **({"q": 0.1} if k < 3 else {})}
+                                      for k in range(1, 5)],
+                         "values": [[15, 15, 15, 10], [20, 15, 10, 10], [30, 8, 30, 30], [10, 6, 10, 10], [6, 6, 6, 6],
+                                    [6, 3, 3, 3], [3, 3, 3, 3]],
+                         "good": [[15, 15, 15, 15], [8, 10, 15, 20]], "bad": [[5, 5, 5, 5]]}},
+    "P7.10": {"title": "Przykład 7.10 — BIPOLAR, modyfikacja zbioru obiektów „dobrych”", "method": "bipolar",
+              "options": {"s": 0.5, "veto_test": "example", "modify": "good"}, "problem": _bip79("Przykład 7.10")},
+    "P7.11": {"title": "Przykład 7.11 — BIPOLAR, modyfikacja zbioru obiektów „złych”", "method": "bipolar",
+              "options": {"s": 0.5, "veto_test": "example", "modify": "bad"}, "problem": _bip79("Przykład 7.11")},
+    "P7.12": {"title": "Przykład 7.12 — BIPOLAR, kategoria B2′", "method": "bipolar",
+              "options": {"s": 0.5, "veto_test": "example", "b2_prime": True}, "problem": _bip79("Przykład 7.12")},
+    "P7.13": {"title": "Przykład 7.13 — BIPOLAR dla dużego systemu referencyjnego (funkcje lokalnej preferencji)",
+              "method": "bipolar",
+              "options": {"s": 0.1, "weights": "objects", "veto_decile": 1, "local_preference": True,
+                          "position": "counts"}, "problem": _bip713("Przykład 7.13")},
+    "P7.15": {"title": "Przykład 7.15 — zmodyfikowany BIPOLAR, wariant klasyczny (wagi z decyli)", "method": "bipolar",
+              "options": {"s": 0.5, "weights": "deciles"}, "problem": _bip713("Przykład 7.15", v=1)},
+    "P7.16": {"title": "Przykład 7.16 — BIPOLAR z porządkowymi (prawie) dominacjami stochastycznymi",
+              "method": "bipolar_sd", "options": {"dominances": ["FSD", "SSD", "AFSD:0.333", "ASSD:0.2"]},
+              "problem": {"name": "Ocena 8 wariantów przez 3 osoby", "variants": _V8,
+                          "criteria": [{"name": "f1", "weight": 0.27, "q": 1, "p": 3, "v": 3},
+                                       {"name": "f2", "weight": 0.39, "q": 1, "p": 3, "v": 3},
+                                       {"name": "f3", "weight": 0.34, "q": 2, "p": 4, "v": 3}],
+                          "values": _obs(_OBS_612),
+                          "good": [[{"obs": [9, 9, 9]}] * 3, [{"obs": [6, 7, 8]}, {"obs": [7, 7, 8]}, {"obs": [7, 7, 7]}]],
+                          "bad": [[{"obs": [4, 4, 4]}, {"obs": [4, 4, 4]}, {"obs": [4, 5, 6]}], [{"obs": [5, 5, 5]}] * 3]}},
     "R14": {"title": "Rozdz. 14 — rozmyty TOPSIS z poziomami aspiracji i rezerwacji (oferty negocjacyjne)",
             "method": "fuzzy_topsis",
             "options": {"cost_norm": "min_l",

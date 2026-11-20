@@ -82,7 +82,9 @@ def main():
                     "P6.7": ("promethee_ii_veto", "a5"), "P6.8": ("exprom", "a3"), "P6.10": ("exprom_veto", "a5"),
                     "P6.11": ("promethee_ii_sd", "a4"), "P6.12": ("promethee_ii_sd", "a8"),
                     "P6.14": ("exprom_ii_sd", "a4"), "P6.16": ("exprom_ii_sd", "a2"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
-                    "P7.4": ("vikor", "a3"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
+                    "P7.4": ("vikor", "a3"), "P7.5": ("dematel", "C3 wartości muzyczne"), "P7.6": ("hybrid", "a8, a10"),
+                    "P7.7": ("bipolar", "a4"), "P7.8": ("bipolar", "a1, a3"), "P7.12": ("bipolar", "a4"),
+                    "P7.13": ("bipolar", "a1"), "P7.16": ("bipolar_sd", "a8"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
         for ex, (meth, best) in expected.items():
             page.select_option("#bk-method", meth)
             page.select_option("#bk-example", ex)
@@ -167,6 +169,30 @@ def main():
         out = page.locator("#bk-out").inner_text()
         check("a5 → a3" not in out and "Pary niejasne" in out, "ELECTRE I SD: para niejasna tylko wskazana")
         shot("electre")
+
+        # --- BIPOLAR i DEMATEL: obiekty referencyjne, macierze wpływu ---
+        page.select_option("#bk-method", "bipolar"); page.select_option("#bk-example", "P7.12"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-ref]").count() == 10, "BIPOLAR: obiekty referencyjne w edytorze")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("B2′" in out and "Relacje wariantów" in out, "BIPOLAR: kategoria B2′ i relacje (przykład 7.12)")
+        page.select_option("#bk-options select[data-o=b2_prime]", "false"); page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("brak" in out, "BIPOLAR: wariant bez kategorii bipolarnej")
+        page.click("#bk-editor button[data-add-ref=bad]")
+        check(page.locator("#bk-editor input[data-ref=bad]").count() == 6, "BIPOLAR: dodanie obiektu „złego”")
+        page.select_option("#bk-method", "dematel"); page.select_option("#bk-example", "P7.5"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-mx=influence]").count() == 16, "DEMATEL: macierz wpływu w edytorze")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("przyczyna" in out and "skutek" in out, "DEMATEL: przyczyny i skutki")
+        page.select_option("#bk-method", "hybrid"); page.select_option("#bk-example", "P7.6"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-mx=cluster_influence]").count() == 16
+              and page.locator("#bk-editor input[data-mx=criteria_influence]").count() == 144, "Hybryda: macierze wpływu grup i kryteriów")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("Znormalizowana macierz T grup" in out and "Ranking Q: a8, a10" in out, "Hybryda: T grup i ranking VIKOR")
+        shot("bipolar")
 
         # --- dobór metody ---
         page.click("#sel-box summary")
