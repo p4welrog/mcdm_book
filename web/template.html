@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCDM i StDom w przeglądarce — programy z płyty CD</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --panel: #ffffff; --ink: #1f2328; --muted: #646b73; --line: #dcd9d2;
+    --accent: #1d4e89; --accent-soft: #e8eef6; --ok: #1e6b3a; --ok-soft: #e7f3eb;
+    --warn: #8a5a00; --warn-soft: #fbf1dc; --bad: #9b1c1c; --bad-soft: #fbe9e9;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  header { padding: 22px 28px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0 0 2px; font: 600 21px/1.3 Georgia, "Times New Roman", serif; }
+  header p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  nav { display: flex; gap: 2px; padding: 0 22px; background: var(--panel); border-bottom: 1px solid var(--line);
+        overflow-x: auto; position: sticky; top: 0; z-index: 5; }
+  nav button { border: 0; background: none; padding: 11px 14px; font: inherit; font-size: 14px; color: var(--muted);
+               border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+  nav button:hover { color: var(--ink); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  nav button:disabled { opacity: .45; cursor: default; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 28px 60px; }
+  section { display: none; }
+  section.active { display: block; }
+  h2 { font: 600 18px/1.3 Georgia, "Times New Roman", serif; margin: 4px 0 12px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+  label { font-size: 14px; }
+  input[type=text], input[type=number], select {
+    font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+  input[type=text] { width: 100%; font-family: var(--mono); font-size: 13.5px; }
+  input[type=number] { width: 120px; }
+  .btn { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 5px; border: 1px solid var(--line);
+         background: #fff; cursor: pointer; }
+  .btn:hover { background: #f3f2ef; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #163d6c; }
+  .btn.yes { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .btn.warn { background: var(--warn-soft); border-color: #e3c98f; }
+  .btn.danger { background: var(--bad-soft); border-color: #e5b5b5; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .tablewrap { overflow-x: auto; margin: 6px 0 4px; }
+  table { border-collapse: collapse; font-size: 13.5px; background: #fff; }
+  th, td { border: 1px solid var(--line); padding: 4px 9px; text-align: right; white-space: nowrap; }
+  th { background: #f4f2ed; font-weight: 600; }
+  td.l, th.l { text-align: left; }
+  td.c, th.c { text-align: center; }
+  td.hl { background: var(--accent-soft); font-weight: 600; }
+  td.dom { font-family: var(--mono); font-size: 12.5px; }
+  td.dom.fsd { background: #dfeee4; } td.dom.ssd { background: #eaf3e2; } td.dom.tsd { background: #f3f6e3; }
+  td.dom.afsd { background: #fbf5e6; color: var(--warn); }
+  td.diag { background: #f0efeb; }
+  .note { padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
+  .note.info { background: var(--accent-soft); }
+  .note.ok { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  .note.warn { background: var(--warn-soft); color: var(--warn); }
+  .note.bad { background: var(--bad-soft); color: var(--bad); }
+  .log { border-left: 3px solid var(--line); padding-left: 14px; }
+  .log .ans { color: var(--muted); font-size: 13.5px; margin: 4px 0 10px; }
+  .log .ans b { color: var(--ink); font-weight: 600; }
+  .log h4 { margin: 16px 0 6px; font-size: 14.5px; }
+  .question { border: 1px solid var(--accent); background: #fff; border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .question .q { font-weight: 600; margin-bottom: 8px; }
+  .param-row { display: grid; grid-template-columns: 26px 1fr 130px; align-items: center; gap: 6px; padding: 2px 0; }
+  #loading { position: fixed; inset: 0; background: rgba(251,250,247,.94); display: flex; align-items: center;
+             justify-content: center; z-index: 50; flex-direction: column; gap: 12px; }
+  .spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  svg text { font-family: inherit; }
+  code { font-family: var(--mono); font-size: 13px; background: #f1efe9; padding: 1px 4px; border-radius: 3px; }
+  .legend { display: inline-flex; gap: 14px; font-size: 13px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 2.5px solid currentColor;
+                         vertical-align: middle; margin-right: 5px; }
+  footer { max-width: 1180px; margin: 0 auto; padding: 0 28px 30px; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div id="loading-msg">Ładowanie Pythona (Pyodide)…</div></div>
+
+<header>
+  <h1>Wielokryterialne wspomaganie decyzji — metody z książki w przeglądarce</h1>
+  <p>Metody z książki „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik, PWE 2014):
+     metody addytywne i metody punktów referencyjnych (pakiet <code>mcdm_book</code>) oraz dominacje stochastyczne i metody
+     interaktywne STEM-DPR i INSDECM — port programów K. Targiela z płyty CD (pakiet <code>mcdm_cd</code>). Obliczenia wykonuje
+     kod Pythona uruchomiony w przeglądarce przez Pyodide.</p>
+</header>
+
+<nav id="tabs">
+  <button data-tab="rank" class="active">Metody rozdz. 2 i 7</button>
+  <button data-tab="dane">Dane (.mcf)</button>
+  <button data-tab="dom">Wykryte dominacje</button>
+  <button data-tab="stdom">Dominacje stochastyczne (StDom)</button>
+  <button data-tab="stem">STEM-DPR</button>
+  <button data-tab="insdecm">INSDECM</button>
+  <button data-tab="info">O programie</button>
+</nav>
+
+<main>
+  <!-- METODY ROZDZ. 2 I 7 -->
+  <section id="tab-rank" class="active">
+    <div class="card">
+      <h2>Ranking wariantów: metody addytywne (rozdz. 2) i punkty referencyjne (rozdz. 7)</h2>
+      <div class="row">
+        <label>Metoda: <select id="bk-method"></select></label>
+        <label>Przykład z książki: <select id="bk-example"></select></label>
+        <button class="btn" id="bk-load">Wczytaj przykład</button>
+      </div>
+      <div id="bk-method-info" class="muted small" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Zadanie</h2>
+        <div class="row small">
+          <button class="btn small" id="bk-add-var">+ wariant</button>
+          <button class="btn small" id="bk-add-crit">+ kryterium</button>
+          <button class="btn small" id="bk-json-toggle">JSON</button>
+        </div></div>
+      <p class="muted small" id="bk-hint"></p>
+      <div id="bk-editor" class="tablewrap"></div>
+      <div id="bk-json-box" style="display:none;margin-top:10px">
+        <textarea id="bk-json" spellcheck="false" style="width:100%;height:260px;font-family:var(--mono);font-size:12.5px"></textarea>
+        <div class="btns"><button class="btn" id="bk-json-apply">Zastosuj JSON</button></div>
+      </div>
+      <h3>Opcje metody</h3>
+      <div id="bk-options" class="row"></div>
+      <div class="btns"><button class="btn primary" id="bk-run">Oblicz</button></div>
+    </div>
+    <div class="card" id="bk-out" style="display:none"></div>
+  </section>
+
+  <!-- DANE -->
+  <section id="tab-dane">
+    <div class="card">
+      <h2>Zadanie decyzyjne</h2>
+      <div class="row">
+        <label>Przykład z płyty:
+          <select id="example"></select></label>
+        <span class="muted">albo</span>
+        <label class="btn">Wczytaj własny plik .mcf <input type="file" id="mcf-file" accept=".mcf,.xls" hidden></label>
+      </div>
+      <div id="problem-info" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Rozkłady ocen</h2>
+        <label>Kryterium: <select id="dist-crit"></select></label></div>
+      <p class="muted small">Prawdopodobieństwa uzyskania poszczególnych wartości kryterium przez warianty; w ostatnim wierszu — wartość oczekiwana.</p>
+      <div id="dist-table" class="tablewrap"></div>
+    </div>
+  </section>
+
+  <!-- WYKRYTE DOMINACJE -->
+  <section id="tab-dom">
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Wykryte dominacje</h2>
+        <label>Kryterium: <select id="dom-crit"></select></label>
+        <label><input type="checkbox" id="dom-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label></div>
+      <p class="muted small">Odpowiednik arkusza „Wykryte dominacje” programu MCDM: wariant w wierszu dominuje wariant w kolumnie
+        (FSD, SSD, TSD przy awersji do ryzyka; AFSD(ε) — prawie dominacja pierwszego stopnia ze stopniem ε &lt; 0,5).</p>
+      <div id="dom-table" class="tablewrap"></div>
+    </div>
+  </section>
+
+  <!-- STDOM -->
+  <section id="tab-stdom">
+    <div class="card">
+      <h2>Dominacje stochastyczne — czy X dominuje Y?</h2>
+      <p class="muted small">Formatka programu StDom. Liczby oddziel spacjami lub średnikami; dozwolony przecinek dziesiętny i ułamki (np. <code>1/7</code>).
+        Domyślnie dane przykładu 1.10.</p>
+      <div class="grid2">
+        <div><b>Rozkład X</b>
+          <div style="margin:6px 0"><input type="text" id="xv" value="1 2 3 4 5" aria-label="X wartości"></div>
+          <div><input type="text" id="xp" value="0,2 0 0,4 0,2 0,2" aria-label="X prawdopodobieństwa"></div>
+          <div class="row small" style="margin-top:6px">Z zadania: <select id="x-var" class="small"></select> <select id="x-crit" class="small"></select>
+            <button class="btn small" id="x-fill">Wstaw</button></div>
+        </div>
+        <div><b>Rozkład Y</b>
+          <div style="margin:6px 0"><input type="text" id="yv" value="1 2 3 4 5" aria-label="Y wartości"></div>
+          <div><input type="text" id="yp" value="0 0,4 0,4 0,2 0" aria-label="Y prawdopodobieństwa"></div>
+          <div class="row small" style="margin-top:6px">Z zadania: <select id="y-var" class="small"></select> <select id="y-crit" class="small"></select>
+            <button class="btn small" id="y-fill">Wstaw</button></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <label><b>Dominacje:</b> <select id="sd-kind"><option value="s">zwykłe</option><option value="o">porządkowe</option></select></label>
+        <label><b>Stosunek do ryzyka:</b> <select id="sd-risk"><option value="DARA">awersja (DARA)</option><option value="INARA">skłonność (INARA)</option></select></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label><input type="checkbox" id="sd-afsd"> prawie dominacje (AFSD / OAFSD)</label>
+        <label><input type="checkbox" id="sd-assd"> OASSD (tylko porządkowe)</label>
+        <label><input type="checkbox" id="sd-quirk" checked> zachowanie StDom 1.09b (Param = 7)</label>
+      </div>
+      <div class="btns"><button class="btn primary" id="sd-run">Oblicz</button></div>
+    </div>
+    <div class="card" id="sd-out" style="display:none">
+      <div class="grid2">
+        <div><h3 style="margin-top:0">Raport</h3><div id="sd-report"></div><div id="sd-holds" class="muted small"></div></div>
+        <div><h3 style="margin-top:0">Dystrybuanty</h3><div id="sd-chart"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEM -->
+  <section id="tab-stem">
+    <div class="card">
+      <h2>Metoda STEM-DPR</h2>
+      <p class="muted small">Interaktywna metoda z rozdz. 8. W każdej iteracji program wyznacza wariant próbny (najmniejsza po wariantach
+        największa po kryteriach aktywnych wartość współczynnika d) i pyta decydenta o ocenę. Przebieg z <b>przykładu 8.2</b>: odpowiedz „Nie”, „Tak”,
+        wybierz X3 i podaj próg 6 — rozwiązaniem jest a3.</p>
+      <div class="row">
+        <label><input type="checkbox" id="stem-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label>
+        <button class="btn primary" id="stem-start">Rozpocznij dialog</button>
+      </div>
+    </div>
+    <div class="card" id="stem-box" style="display:none"><div id="stem-log" class="log"></div><div id="stem-q"></div></div>
+  </section>
+
+  <!-- INSDECM -->
+  <section id="tab-insdecm">
+    <div class="card">
+      <h2>Metoda INSDECM</h2>
+      <p class="muted small">Interaktywna metoda z rozdz. 8 oparta na macierzy możliwości (wartości pesymistyczne i optymistyczne wybranych parametrów
+        rozkładów). Przebieg z <b>przykładu 8.4</b>: dla X1 parametr Pr{X ≥ 6}; warunek X1, Pr{X ≥ 6} ≥ 0,5; potem dla X2 Pr{X ≥ 5} i warunek ≥ 0,65;
+        potem dla X3 Pr{X ≥ 7,5} i akceptacja — warianty a4, a5, a9.</p>
+      <div class="row">
+        <label><input type="checkbox" id="ins-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label>
+        <label><input type="checkbox" id="ins-vba"> parametry rozkładu jak w MCDM 1.00</label>
+        <button class="btn primary" id="ins-start">Rozpocznij dialog</button>
+      </div>
+    </div>
+    <div class="card" id="ins-box" style="display:none"><div id="ins-log" class="log"></div><div id="ins-q"></div></div>
+  </section>
+
+  <!-- INFO -->
+  <section id="tab-info">
+    <div class="card">
+      <h2>O programie</h2>
+      <p>Strona uruchamia w przeglądarce pakiet <code>mcdm_cd</code> — port do Pythona obliczeń z dwóch dodatków Excela z płyty CD dołączonej do książki
+        „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik):</p>
+      <ul>
+        <li><b>StDom 1.09b</b> (K. Targiel, 2014) — zwykłe i porządkowe dominacje stochastyczne (FSD, SSD, TSD, SISD, TISD, AFSD, OFSD, OSSD, OAFSD, OASSD);</li>
+        <li><b>MCDM 1.00</b> (K. Targiel, 2013) — metody interaktywne STEM-DPR i INSDECM dla dyskretnych problemów decyzyjnych w warunkach ryzyka (rozdz. 8).</li>
+      </ul>
+      <p>Wyniki portu sprawdzono z raportami StDom wklejonymi do przykładów 5.19, 6.13 i 6.15, z arkuszem „Wyniki” pliku <code>StDom_Przyklad1</code>
+        (przykład 1.10) oraz z przebiegami przykładów 8.2 (STEM-DPR) i 8.4 (INSDECM).</p>
+      <h3>Różnice względem programów z płyty</h3>
+      <p class="small">Domyślnie port liczy według definicji matematycznych; zachowanie oryginału można włączyć opcjami:</p>
+      <ul class="small">
+        <li><b>dominacje na surowych wartościach</b> — MCDM 1.00 bada dominacje bez odwracania kryteriów minimalizowanych (oba pliki .mcf z płyty mają same kryteria maksymalizowane, więc wyniki się nie różnią);</li>
+        <li><b>zachowanie StDom 1.09b (Param = 7)</b> — zaznaczenie AFSD/OAFSD przełącza w StDom obliczenia na wariant INARA, więc SSD/TSD (OSSD) są wtedy raportowane jako niezachodzące, chyba że zachodzi FSD;</li>
+        <li><b>parametry rozkładu jak w MCDM 1.00</b> — odchylenie standardowe względem v·p ostatniego punktu, mediana jako pozycja środkowa bez wag, kwartyle zawsze równe 1;</li>
+        <li>TSD bez warunku na wartości oczekiwane (całki tylko do największej wartości siatki), jak w programach z płyty;</li>
+        <li>INSDECM: korekta progu po niespójności z nierównościami ostrymi (poza parametrami 7/8), a reakcja „podtrzymanie” usuwa ze zbioru niespójności wszystkie pary z tym samym wariantem dominującym lub dominowanym — jak w oryginale.</li>
+      </ul>
+      <h3>Format pliku .mcf</h3>
+      <p class="small">Skoroszyt Excela (.xls) z arkuszem „Dane”: A1 komentarz; A2 liczba kryteriów, B2 liczba wariantów; wiersz 4 od kolumny B — nazwy kryteriów,
+        wiersz 5 — 1 dla kryteriów maksymalizowanych, 0 dla minimalizowanych; wiersz 7 — nazwy wariantów; od wiersza 10 dla każdego wariantu po dwa wiersze
+        na kryterium (wartości i prawdopodobieństwa, do 10 punktów w kolumnach B:K) i jeden wiersz odstępu.</p>
+      <p class="small muted">Wymaga połączenia z internetem przy pierwszym otwarciu (Pyodide ładowany z cdn.jsdelivr.net). Pliki wczytywane z dysku nie opuszczają przeglądarki.</p>
+    </div>
+  </section>
+</main>
+<footer>Pyodide <span id="pyver"></span> · pakiety mcdm_book 0.1.0 i mcdm_cd 0.1.0</footer>
+
+<script type="application/json" id="pyfiles">/*__PYFILES__*/</script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+"use strict";
+let py = null, web = null, problem = null;
+
+// ---------- pomocnicze ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function fmt(x, d = 4) {
+  if (x === null || x === undefined) return "—";
+  if (typeof x !== "number") return esc(x);
+  const r = Number(x.toFixed(d));
+  return (Object.is(r, -0) ? 0 : r).toString().replace(".", ",");
+}
+function parseNumbers(text) {
+  const out = [];
+  for (let tok of text.replace(/[;\t]/g, " ").split(/\s+/)) {
+    tok = tok.trim().replace(/,$/, "");
+    if (!tok) continue;
+    tok = tok.replace(",", ".");
+    let v;
+    if (tok.includes("/")) { const [a, b] = tok.split("/"); v = parseFloat(a) / parseFloat(b); }
+    else v = Number(tok);
+    if (!Number.isFinite(v)) throw new Error(`Niepoprawna liczba: „${tok}”`);
+    out.push(v);
+  }
+  return out;
+}
+function parseNum(s) {
+  const v = parseNumbers(String(s));
+  if (v.length !== 1) throw new Error(`Podaj jedną liczbę (jest: „${s}”)`);
+  return v[0];
+}
+function call(name, ...args) {
+  try { return JSON.parse(web[name](...args)); }
+  catch (e) { throw new Error(pyError(e)); }
+}
+function pyError(e) {
+  const m = String(e && e.message || e);
+  const lines = m.trim().split("\n");
+  return lines[lines.length - 1];
+}
+function table(head, rows, opts = {}) {
+  let h = "<table><thead>";
+  for (const hr of (Array.isArray(head[0]) ? head : [head])) {
+    h += "<tr>" + hr.map((c, j) => {
+      const span = (c && typeof c === "object") ? ` colspan="${c.span}"` : "";
+      const txt = (c && typeof c === "object") ? c.text : c;
+      return `<th class="${j === 0 ? "l" : "c"}"${span}>${esc(txt)}</th>`;
+    }).join("") + "</tr>";
+  }
+  h += "</thead><tbody>";
+  rows.forEach((r, i) => {
+    h += "<tr>" + r.map((c, j) => {
+      const cls = opts.cellClass ? opts.cellClass(i, j, c) : (j === 0 ? "l" : "");
+      return `<td class="${cls}">${j === 0 ? esc(c) : (opts.raw ? c : fmt(c, opts.d))}</td>`;
+    }).join("") + "</tr>";
+  });
+  return h + "</tbody></table>";
+}
+function note(text, kind = "info") { return `<div class="note ${kind}">${esc(text)}</div>`; }
+function showError(where, e) { $(where).insertAdjacentHTML("beforeend", note("Błąd: " + (e.message || e), "bad")); }
+function plural(n, one, few, many) {
+  const f = (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? few : many;
+  return `${n} ${n === 1 ? one : f}`;
+}
+function opt(v, t, sel) { return `<option value="${esc(v)}"${sel ? " selected" : ""}>${esc(t)}</option>`; }
+
+// ---------- zakładki ----------
+document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x === b));
+  document.querySelectorAll("main section").forEach((s) => s.classList.toggle("active", s.id === "tab-" + b.dataset.tab));
+  if (b.dataset.tab === "dom") renderDominance();
+}));
+
+// ---------- start ----------
+async function init() {
+  try {
+    py = await loadPyodide();
+    $("pyver").textContent = py.version;
+    $("loading-msg").textContent = "Ładowanie pakietu mcdm_cd…";
+    const files = JSON.parse($("pyfiles").textContent);
+    for (const [path, f] of Object.entries(files)) {
+      const full = "/home/pyodide/" + path;
+      py.FS.mkdirTree(full.slice(0, full.lastIndexOf("/")));
+      const data = f.b64 ? Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0)) : f.text;
+      py.FS.writeFile(full, data);
+    }
+    py.runPython("import sys; sys.path.insert(0, '/home/pyodide/vendor'); sys.path.insert(0, '/home/pyodide')");
+    web = py.pyimport("web");
+    const ex = call("examples");
+    $("example").innerHTML = ex.map((e) => opt(e.id, e.label)).join("");
+    loadProblem(() => call("load_example", ex[0].id));
+    bookInit();
+    $("loading").style.display = "none";
+  } catch (e) {
+    $("loading-msg").innerHTML = "Nie udało się uruchomić Pythona w przeglądarce.<br><span class='muted small'>" + esc(e.message || e) +
+      "</span><br><span class='muted small'>Strona wymaga połączenia z internetem (cdn.jsdelivr.net) i nowej przeglądarki.</span>";
+    document.querySelector("#loading .spinner").style.display = "none";
+  }
+}
+
+function loadProblem(fn) {
+  try { problem = fn(); }
+  catch (e) { $("problem-info").innerHTML = note("Nie udało się wczytać pliku: " + e.message, "bad"); return; }
+  const p = problem;
+  let h = `<div><b>${esc(p.source)}</b>${p.comment ? " — " + esc(p.comment) : ""}</div>`;
+  h += `<div class="muted small">${plural(p.m, "kryterium", "kryteria", "kryteriów")}, ${plural(p.n, "wariant", "warianty", "wariantów")}</div>`;
+  h += `<div class="tablewrap" style="margin-top:8px">` + table(["Kryterium", "Kierunek"],
+        p.criteria.map((c, k) => [c, p.maximize[k] ? "maksymalizowane" : "minimalizowane"]), { raw: true }) + "</div>";
+  h += `<div class="muted small">Warianty: ${p.variants.map(esc).join(", ")}</div>`;
+  if (p.warnings.length) h += note("Uwagi: " + p.warnings.join("; "), "warn");
+  $("problem-info").innerHTML = h;
+  const critOpts = p.criteria.map((c, k) => opt(k, c)).join("");
+  for (const id of ["dist-crit", "dom-crit", "x-crit", "y-crit"]) $(id).innerHTML = critOpts;
+  $("x-var").innerHTML = p.variants.map((v, i) => opt(i, v)).join("");
+  $("y-var").innerHTML = p.variants.map((v, i) => opt(i, v, i === 1)).join("");
+  renderDistributions();
+  if ($("tab-dom").classList.contains("active")) renderDominance();
+  $("stem-box").style.display = "none";
+  $("ins-box").style.display = "none";
+}
+
+$("example").addEventListener("change", (e) => loadProblem(() => call("load_example", e.target.value)));
+$("mcf-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const buf = new Uint8Array(await f.arrayBuffer());
+  loadProblem(() => {
+    const pyBuf = py.toPy(buf);
+    try { return call("load_bytes", pyBuf, f.name); } finally { pyBuf.destroy(); }
+  });
+  e.target.value = "";
+});
+
+function renderDistributions() {
+  const k = Number($("dist-crit").value || 0);
+  const d = call("distributions", k);
+  const rows = d.rows.map((r) => r.map((v, j) => (j > 0 && v === 0) ? "" : v));
+  rows.push(["średnia", ...d.means]);
+  $("dist-table").innerHTML = table([`${d.criterion} \\ wariant`, ...d.variants], rows,
+    { cellClass: (i, j) => (j === 0 ? "l" : (i === rows.length - 1 ? "hl" : "")) });
+}
+$("dist-crit").addEventListener("change", renderDistributions);
+
+function renderDominance() {
+  if (!problem) return;
+  const k = Number($("dom-crit").value || 0);
+  $("dom-table").innerHTML = "<span class='muted'>Obliczanie…</span>";
+  setTimeout(() => {
+    const d = call("dominance_matrix", k, !$("dom-raw").checked);
+    $("dom-table").innerHTML = table([`${d.criterion}: wiersz ≻ kolumna`, ...d.variants],
+      d.rows.map((r, i) => [d.variants[i], ...r]),
+      { raw: true, cellClass: (i, j, c) => j === 0 ? "l" : (i === j - 1 ? "diag" :
+          "dom c " + (c === "FSD" ? "fsd" : c === "SSD" ? "ssd" : c === "TSD" ? "tsd" : c ? "afsd" : "")) });
+  }, 10);
+}
+$("dom-crit").addEventListener("change", renderDominance);
+$("dom-raw").addEventListener("change", renderDominance);
+
+// ---------- StDom ----------
+function fillFrom(side) {
+  const d = call("variant_dist", Number($(side + "-var").value), Number($(side + "-crit").value));
+  $(side + "v").value = d.values.map((v) => fmt(v, 6)).join(" ");
+  $(side + "p").value = d.probs.map((v) => fmt(v, 6)).join(" ");
+}
+$("x-fill").addEventListener("click", () => fillFrom("x"));
+$("y-fill").addEventListener("click", () => fillFrom("y"));
+
+function runStdom() {
+  $("sd-out").style.display = "block";
+  $("sd-report").innerHTML = ""; $("sd-holds").innerHTML = ""; $("sd-chart").innerHTML = "";
+  let r;
+  try {
+    const xv = parseNumbers($("xv").value), xp = parseNumbers($("xp").value);
+    const yv = parseNumbers($("yv").value), yp = parseNumbers($("yp").value);
+    r = call("stdom", py.toPy(xv), py.toPy(xp), py.toPy(yv), py.toPy(yp), $("sd-kind").value === "o",
+             $("sd-risk").value, $("sd-afsd").checked, $("sd-assd").checked, $("sd-quirk").checked);
+  } catch (e) { showError("sd-report", e); return; }
+  $("sd-report").innerHTML = table(["Dominacja", "Wynik"], r.rows, { raw: true }) +
+    `<div class="small" style="margin-top:8px">E[X] = ${fmt(r.mean_x)}, E[Y] = ${fmt(r.mean_y)}</div>`;
+  const hk = Object.entries(r.holds);
+  if (hk.length) $("sd-holds").innerHTML = "Każdy warunek sprawdzony osobno: " + hk.map(([k, v]) => `${k}: ${v ? "tak" : "nie"}`).join(", ");
+  $("sd-chart").innerHTML = cdfChart(r.grid, r.cdf_x, r.cdf_y);
+}
+$("sd-run").addEventListener("click", runStdom);
+
+function cdfChart(g, fx, fy) {
+  const W = 480, H = 260, L = 44, R = 14, T = 12, B = 34;
+  const span = (g[g.length - 1] - g[0]) || 1, pad = span * 0.1;
+  const x0 = g[0] - pad, x1 = g[g.length - 1] + pad;
+  const sx = (v) => L + (v - x0) / (x1 - x0) * (W - L - R);
+  const sy = (v) => T + (1 - v) * (H - T - B);
+  const path = (F) => {
+    let d = `M${sx(x0)},${sy(0)}`;
+    g.forEach((v, i) => { d += ` H${sx(v)} V${sy(F[i])}`; });
+    return d + ` H${sx(x1)}`;
+  };
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px" role="img" aria-label="Dystrybuanty X i Y">`;
+  for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+    s += `<line x1="${L}" x2="${W - R}" y1="${sy(t)}" y2="${sy(t)}" stroke="#e6e3dc"/>`;
+    s += `<text x="${L - 6}" y="${sy(t) + 4}" font-size="11" text-anchor="end" fill="#646b73">${fmt(t, 2)}</text>`;
+  }
+  const ticks = g.length <= 12 ? g : g.filter((_, i) => i % Math.ceil(g.length / 10) === 0);
+  for (const t of ticks) s += `<text x="${sx(t)}" y="${H - B + 16}" font-size="11" text-anchor="middle" fill="#646b73">${fmt(t, 3)}</text>`;
+  s += `<line x1="${L}" x2="${W - R}" y1="${sy(0)}" y2="${sy(0)}" stroke="#9aa0a6"/>`;
+  s += `<path d="${path(fx)}" fill="none" stroke="#1d4e89" stroke-width="2.5"/>`;
+  s += `<path d="${path(fy)}" fill="none" stroke="#c0661b" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  s += `<text x="${W - R}" y="${H - 4}" font-size="11" text-anchor="end" fill="#646b73">t</text>`;
+  s += "</svg>";
+  return s + `<div class="legend"><span style="color:#1d4e89">F<sub>X</sub>(t) = P(X ≤ t)</span><span style="color:#c0661b">F<sub>Y</sub>(t)</span></div>`;
+}
+
+// ---------- dialogi ----------
+const D = { stem: { log: "stem-log", q: "stem-q" }, insdecm: { log: "ins-log", q: "ins-q" } };
+let active = null;
+
+function logAdd(kind, html) { $(D[kind].log).insertAdjacentHTML("beforeend", html); }
+function ask(kind, inner) {
+  $(D[kind].q).innerHTML = `<div class="question">${inner}</div>`;
+  $(D[kind].q).scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function reply(kind, qkind, question, label, value) {
+  logAdd(kind, `<div class="ans">▸ ${esc(question)} — <b>${esc(label)}</b></div>`);
+  $(D[kind].q).innerHTML = "";
+  let next;
+  try { next = call("answer", JSON.stringify({ kind: qkind, value })); }
+  catch (e) { showError(D[kind].log, e); return; }
+  handle(kind, next);
+}
+function bindButtons(kind, qkind, question, choices) {
+  const id = "b" + Math.random().toString(36).slice(2, 8);
+  const html = `<div class="q">${esc(question)}</div><div class="btns">` +
+    choices.map((c, i) => `<button class="btn ${c.cls || ""}" id="${id}-${i}">${esc(c.label)}</button>`).join("") + "</div>";
+  ask(kind, html);
+  choices.forEach((c, i) => $(`${id}-${i}`).addEventListener("click", () => reply(kind, qkind, question, c.label, c.value)));
+}
+const yesNo = (cancel = true) => [{ label: "Tak", value: true, cls: "yes" }, { label: "Nie", value: false },
+  ...(cancel ? [{ label: "Anuluj", value: null }] : [])];
+
+function startDialog(kind) {
+  if (!problem) return;
+  $(D[kind].log).innerHTML = ""; $(D[kind].q).innerHTML = "";
+  $(kind === "stem" ? "stem-box" : "ins-box").style.display = "block";
+  logAdd(kind, `<div class="muted small">Zadanie: ${esc(problem.source)}</div>`);
+  let q;
+  try {
+    q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false)
+                        : call("start", "insdecm", !$("ins-raw").checked, $("ins-vba").checked);
+  } catch (e) { showError(D[kind].log, e); return; }
+  handle(kind, q);
+}
+$("stem-start").addEventListener("click", () => startDialog("stem"));
+$("ins-start").addEventListener("click", () => startDialog("insdecm"));
+
+function handle(kind, q) {
+  if (q.done) return finish(kind, q);
+  (kind === "stem" ? STEM : INS)[q.kind](q);
+}
+
+function finish(kind, r) {
+  if (kind === "stem") {
+    if (r.status === "final") logAdd(kind, note(`Rozwiązanie końcowe: ${r.solution}`, "ok"));
+    else if (r.status === "impossible") logAdd(kind, note("Wyznaczenie rozwiązania metodą STEM-DPR jest niemożliwe.", "bad"));
+    else logAdd(kind, note("Przerwano dialog.", "bad"));
+  } else {
+    if (r.status === "final") logAdd(kind, note("Zaakceptowano jedno z rozwiązań: " + r.solutions.join(", "), "ok"));
+    else logAdd(kind, note("Przerwano dialog.", "bad"));
+  }
+}
+
+// STEM-DPR
+const STEM = {
+  satisfied(q) {
+    const it = q.it;
+    logAdd("stem", `<h4>Iteracja ${it.number} — wariant próbny: ${esc(it.trial)}</h4>` +
+      `<div class="tablewrap">` + table(["Kryterium", "Średnia", "d", "Wartość idealna", "Kryterium aktywne", "Kierunek"],
+        it.rows.map((r) => [r[0], fmt(r[1]), fmt(r[2]), fmt(r[3]), r[4] ? "Tak" : "Nie", r[5]]), { raw: true }) + "</div>" +
+      `<div class="small">Warianty rozpatrywane: ${it.active_variants.map(esc).join(", ")}</div>`);
+    bindButtons("stem", q.kind, "Czy otrzymane rozwiązanie jest satysfakcjonujące?", yesNo());
+  },
+  some_criterion_satisfactory(q) {
+    bindButtons("stem", q.kind, "Czy dla przynajmniej jednego kryterium ocena wariantu próbnego jest satysfakcjonująca?", yesNo());
+  },
+  choose_criterion(q) {
+    bindButtons("stem", q.kind, "Wskaż kryterium, względem którego ocena jest satysfakcjonująca",
+      [...q.candidates.map(([k, name]) => ({ label: name, value: k, cls: "primary" })), { label: "Anuluj", value: null }]);
+  },
+  threshold(q) {
+    const question = `Kryterium ${q.criterion} (${q.maximize ? "maksymalizowane" : "minimalizowane"}): ` +
+      `${q.maximize ? "minimalna" : "maksymalna"} akceptowana wartość średniej`;
+    ask("stem", `<div class="q">${esc(question)}</div><div class="muted small">Podpowiedź: wartość idealna.</div>
+      <div class="row" style="margin-top:6px"><input type="text" id="stem-thr" style="width:140px" value="${fmt(q.default, 6)}">
+      <button class="btn primary" id="stem-thr-ok">OK</button></div><div id="stem-thr-err"></div>`);
+    const go = () => {
+      let v;
+      try { v = parseNum($("stem-thr").value); } catch (e) { $("stem-thr-err").innerHTML = note(e.message, "bad"); return; }
+      reply("stem", q.kind, question, fmt(v, 6), v);
+    };
+    $("stem-thr-ok").addEventListener("click", go);
+    $("stem-thr").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  },
+};
+
+// INSDECM
+function pTable(P) {
+  const crits = [];
+  P.cols.forEach(([c]) => { if (!crits.length || crits[crits.length - 1].text !== c) crits.push({ text: c, span: 1 }); else crits[crits.length - 1].span++; });
+  return `<div class="tablewrap">` + table([["Kryterium", ...crits], ["Parametr rozkładu", ...P.cols.map((c) => c[1])]],
+    [["Wartość pesymistyczna", ...P.pessimistic], ["Wartość optymistyczna", ...P.optimistic]]) + "</div>";
+}
+const INS = {
+  parameters(q) {
+    const question = `Jakie parametry mają być prezentowane dla kryterium ${q.criterion}?`;
+    let h = `<div class="q">${esc(question)}</div><div class="muted small">Wartość oczekiwana jest prezentowana zawsze. Parametry 3–8 wymagają wartości ψ.</div>`;
+    for (const [p, name, needs] of q.params) {
+      const cur = q.current[String(p)];
+      const has = String(p) in q.current;
+      h += `<div class="param-row"><input type="checkbox" id="pp-${p}"${has ? " checked" : ""}>
+        <label for="pp-${p}">${esc(name)}</label>
+        ${needs ? `<input type="text" id="psi-${p}" placeholder="ψ" value="${cur !== null && cur !== undefined ? fmt(cur, 6) : ""}">` : "<span></span>"}</div>`;
+    }
+    h += `<div class="btns"><button class="btn primary" id="pp-ok">OK</button></div><div id="pp-err"></div>`;
+    ask("insdecm", h);
+    for (const [p, , needs] of q.params) if (needs) {
+      $(`psi-${p}`).addEventListener("input", () => { if ($(`psi-${p}`).value.trim()) $(`pp-${p}`).checked = true; });
+    }
+    $("pp-ok").addEventListener("click", () => {
+      const val = {}, labels = [];
+      try {
+        for (const [p, name, needs] of q.params) {
+          if (!$(`pp-${p}`).checked) continue;
+          if (needs) {
+            const s = $(`psi-${p}`).value.trim();
+            if (!s) throw new Error(`Podaj ψ dla parametru „${name}”`);
+            val[p] = parseNum(s);
+            labels.push(`${name} ${fmt(val[p], 6)}`);
+          } else { val[p] = null; labels.push(name); }
+        }
+      } catch (e) { $("pp-err").innerHTML = note(e.message, "bad"); return; }
+      reply("insdecm", q.kind, question, labels.join("; ") || "tylko wartość oczekiwana", val);
+    });
+  },
+  parameters_sufficient(q) {
+    const it = q.it;
+    if (it.log.length && it.log[it.log.length - 1].startsWith("Zmieniono")) {
+      logAdd("insdecm", `<h4>Macierz możliwości P(${it.number}) — nowe parametry</h4>` + pTable(it.P));
+    } else {
+      logAdd("insdecm", `<h4>Iteracja ${it.number}</h4><div class="small">Warianty rozpatrywane: ${it.active.map(esc).join(", ")}</div>` +
+        `<div class="small" style="margin-top:6px"><b>Macierz możliwości P(${it.number})</b></div>` + pTable(it.P));
+    }
+    bindButtons("insdecm", q.kind, "Czy prezentowane parametry są wystarczające?", yesNo());
+  },
+  pessimistic_satisfactory(q) {
+    bindButtons("insdecm", q.kind, "Czy wartości pesymistyczne są satysfakcjonujące?", yesNo());
+  },
+  condition(q) {
+    const question = "Wskaż kryterium i parametr, dla których sformułujesz dodatkowy warunek";
+    ask("insdecm", `<div class="q">${esc(question)}</div>
+      <div class="row"><label>Kryterium <select id="c-k">${q.criteria.map((c) => opt(c.k, c.name)).join("")}</select></label>
+      <label>Parametr <select id="c-p"></select></label>
+      <label>Próg <input type="text" id="c-v" style="width:120px"></label></div>
+      <div id="c-info" class="muted small" style="margin-top:6px"></div>
+      <div class="btns"><button class="btn primary" id="c-ok">OK</button><button class="btn" id="c-cancel">Anuluj</button></div><div id="c-err"></div>`);
+    const cur = () => q.criteria[Number($("c-k").value)];
+    const curP = () => cur().params.find((x) => String(x.p) === $("c-p").value);
+    const updV = () => {
+      const p = curP();
+      $("c-v").value = fmt(p.pessimistic, 6);
+      $("c-info").textContent = `Warunek: wartość parametru ${p.higher_better ? "nie mniejsza" : "nie większa"} niż próg (podpowiedź: wartość pesymistyczna).`;
+    };
+    const updP = () => { $("c-p").innerHTML = cur().params.map((x) => opt(x.p, x.label)).join(""); updV(); };
+    $("c-k").addEventListener("change", updP);
+    $("c-p").addEventListener("change", updV);
+    updP();
+    $("c-ok").addEventListener("click", () => {
+      let v;
+      try { v = parseNum($("c-v").value); } catch (e) { $("c-err").innerHTML = note(e.message, "bad"); return; }
+      const c = cur(), p = curP();
+      reply("insdecm", q.kind, question, `${c.name}, ${p.label} ${p.higher_better ? "≥" : "≤"} ${fmt(v, 6)}`, [c.k, p.p, v]);
+    });
+    $("c-cancel").addEventListener("click", () => reply("insdecm", q.kind, question, "Anuluj", null));
+  },
+  accept_changes(q) {
+    logAdd("insdecm", `<div class="small" style="margin-top:6px"><b>Macierz możliwości P(${q.it.number + 1}) po wprowadzeniu warunku</b></div>` + pTable(q.it.P_next));
+    bindButtons("insdecm", q.kind, "Czy akceptujesz zmiany?", yesNo());
+  },
+  inconsistency_action(q) {
+    const inc = q.inc;
+    logAdd("insdecm", note(`Niespójność: odrzucony wariant ${inc.i} dominuje stochastycznie pozostawiony wariant ${inc.j} ` +
+      `(stopień AFSD ε = ${fmt(inc.eps, 3)}).`, "warn"));
+    bindButtons("insdecm", q.kind, "Wybór akcji", [
+      { label: "Podtrzymanie warunku", value: 0 }, { label: "Osłabienie warunku", value: 1, cls: "warn" },
+      { label: "Zaostrzenie warunku", value: 2, cls: "danger" }]);
+  },
+  accept_proposal(q) {
+    const pr = q.proposal;
+    const question = `Proponowana zmiana warunku dla ${pr.criterion}, parametr ${pr.param}`;
+    const choices = [{ label: `Akceptacja: próg ${fmt(pr.value)}`, value: "value", cls: "primary" }];
+    if (pr.value_other !== null && pr.value_other !== undefined) choices.push({ label: `Akceptacja: próg ${fmt(pr.value_other)}`, value: "value_other", cls: "primary" });
+    choices.push({ label: "Odrzucenie", value: null });
+    bindButtons("insdecm", q.kind, question, choices);
+  },
+  accept_solution(q) {
+    const R = q.R;
+    const crits = [];
+    R.cols.forEach(([c]) => { if (!crits.length || crits[crits.length - 1].text !== c) crits.push({ text: c, span: 1 }); else crits[crits.length - 1].span++; });
+    logAdd("insdecm", `<h4>Macierz rozwiązań R(${R.iteration})</h4><div class="tablewrap">` +
+      table([["Kryterium", ...crits], ["Wariant \\ parametr", ...R.cols.map((c) => c[1])]], R.rows) + "</div>");
+    bindButtons("insdecm", q.kind, "Czy akceptujesz jedno z rozwiązań?", yesNo(false));
+  },
+};
+
+// ---------- metody z rozdz. 2 i 7 (mcdm_book) ----------
+const BK = { methods: null, examples: [], problem: null, method: "saw", options: {} };
+const CRIT_FIELDS = {
+  saw: ["direction", "weight"], scoring: ["max_points"], fsaw: ["direction", "fuzzy_weight"],
+  smart: ["direction", "swing", "scale"], smarter: ["direction", "rank", "scale"],
+  topsis: ["direction", "weight"], fuzzy_topsis: ["direction", "weight"], vikor: ["direction", "weight"],
+};
+const FIELD_LABEL = { direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
+  swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny" };
+const HINTS = {
+  saw: "Oceny liczbowe; wagi sumujące się do 1 (inne są normalizowane).",
+  scoring: "W macierzy wpisz punkty przyznane wariantom za każde kryterium; „maks. punktów” to część puli P przydzielona kryterium.",
+  fsaw: "Oceny liczbowe; wagi rozmyte jako trzy liczby: minimalna; najodpowiedniejsza; maksymalna (np. 0; 0,1; 0,5).",
+  smart: "Sposób oceny kryterium: liniowo między najgorszą a najlepszą wartością, ocena bezpośrednia (w macierzy oceny 0–100) albo funkcja wartości z punktów „x:ocena” (np. 30:0 50:25 70:50 80:75 90:100). Wagi rozpiętości: najważniejsze kryterium 100, pozostałe 0–100.",
+  smarter: "Liniowe funkcje wartości (lub ocena bezpośrednia) i rangi kryteriów — wagi ROC albo sumy rang.",
+  topsis: "Oceny liczbowe, kierunki i wagi.",
+  fuzzy_topsis: "Oceny jako trójkątne liczby rozmyte: l; m; u (np. 2; 3; 5). Pojedyncza liczba x oznacza (x; x; x).",
+  vikor: "Oceny liczbowe, kierunki i wagi. Wynik Q — im mniej, tym lepiej.",
+};
+const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
+
+function numStr(x) { return (x === null || x === undefined) ? "" : String(x).replace(".", ","); }
+function cellStr(v) { return Array.isArray(v) ? v.map(numStr).join("; ") : numStr(v); }
+function parseCell(s) {
+  const v = parseNumbers(s);
+  if (v.length === 1) return v[0];
+  if (v.length === 3) return v;
+  throw new Error(`Komórka „${s}”: wpisz liczbę albo trzy liczby l; m; u`);
+}
+function emptyProblem() {
+  return { name: "", variants: ["a1", "a2", "a3"],
+    criteria: [{ name: "f1", direction: "max", weight: 0.5 }, { name: "f2", direction: "max", weight: 0.5 }],
+    values: [[0, 0], [0, 0], [0, 0]] };
+}
+
+function bookInit() {
+  BK.methods = call("book_methods");
+  BK.examples = call("book_examples");
+  $("bk-method").innerHTML = Object.entries(BK.methods).map(([k, m]) => opt(k, `${m.title} (${m.chapter})`)).join("");
+  $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); });
+  $("bk-load").addEventListener("click", () => bookLoadExample($("bk-example").value));
+  $("bk-add-var").addEventListener("click", () => { bookRead(); const p = BK.problem;
+    p.variants.push("a" + (p.variants.length + 1)); p.values.push(p.criteria.map(() => 0)); bookRender(); });
+  $("bk-add-crit").addEventListener("click", () => { bookRead(); const p = BK.problem;
+    p.criteria.push({ name: "f" + (p.criteria.length + 1), direction: "max" }); p.values.forEach((r) => r.push(0)); bookRender(); });
+  $("bk-json-toggle").addEventListener("click", () => {
+    const box = $("bk-json-box"); const show = box.style.display === "none";
+    if (show) { try { bookRead(); } catch (e) {} $("bk-json").value = JSON.stringify({ method: BK.method, options: BK.options, problem: BK.problem }, null, 1); }
+    box.style.display = show ? "block" : "none";
+  });
+  $("bk-json-apply").addEventListener("click", () => {
+    try {
+      const req = JSON.parse($("bk-json").value);
+      if (req.method) { BK.method = req.method; $("bk-method").value = req.method; bookExamplesForMethod(); }
+      BK.options = req.options || {};
+      BK.problem = req.problem || req;
+      bookRender();
+    } catch (e) { $("bk-hint").innerHTML = note("Niepoprawny JSON: " + e.message, "bad"); }
+  });
+  $("bk-run").addEventListener("click", bookRun);
+  bookExamplesForMethod();
+  bookLoadExample("P2.1");
+}
+
+function bookExamplesForMethod() {
+  const list = BK.examples.filter((e) => e.method === BK.method);
+  $("bk-example").innerHTML = list.map((e) => opt(e.id, e.title)).join("") + opt("", "— puste zadanie —");
+}
+
+function bookLoadExample(id) {
+  if (!id) { BK.problem = emptyProblem(); BK.options = {}; }
+  else {
+    const ex = call("book_example", id);
+    BK.method = ex.method; BK.options = ex.options || {}; BK.problem = ex.problem;
+    $("bk-method").value = ex.method;
+    bookExamplesForMethod(); $("bk-example").value = id;
+  }
+  $("bk-out").style.display = "none";
+  bookRender();
+}
+
+function scaleStr(sc) {
+  if (!sc) return { type: "linear", text: "" };
+  if (typeof sc === "string") return { type: sc, text: "" };
+  if (sc.type === "value_function") return { type: sc.type, interp: sc.interpolation || "piecewise",
+    text: (sc.points || []).map(([x, y]) => `${numStr(x)}:${numStr(y)}`).join(" ") };
+  if (sc.type === "linear") return { type: "linear", text: [sc.worst, sc.best].some((v) => v !== undefined) ? `${numStr(sc.worst)} → ${numStr(sc.best)}` : "" };
+  return { type: sc.type, text: "" };
+}
+
+function bookRender() {
+  const p = BK.problem, m = BK.method, fields = CRIT_FIELDS[m];
+  const info = BK.methods[m];
+  $("bk-method-info").innerHTML = `<b>${esc(info.title)}</b> — rozdz. ${esc(info.chapter)}. Potrzebne: ${esc(info.needs)}.`;
+  $("bk-hint").textContent = HINTS[m] || "";
+  let h = `<table><thead><tr><th class="l">Wariant \\ kryterium</th>` +
+    p.criteria.map((c, k) => `<th><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:110px;font-weight:600">` +
+      ` <button class="btn small" data-del-c="${k}" title="Usuń kryterium" style="padding:1px 6px">×</button></th>`).join("") + "</tr>";
+  for (const f of fields) {
+    h += `<tr><th class="l small">${esc(FIELD_LABEL[f])}</th>`;
+    p.criteria.forEach((c, k) => {
+      let cell;
+      if (f === "direction") cell = `<select data-c="direction" data-k="${k}">${opt("max", "max (zysk)", c.direction !== "min")}${opt("min", "min (koszt)", c.direction === "min")}</select>`;
+      else if (f === "scale") {
+        const s = scaleStr(c.scale);
+        const types = m === "smarter" ? [["linear", "liniowo"], ["direct", "bezpośrednio"]] :
+          [["linear", "liniowo"], ["direct", "bezpośrednio"], ["value_function", "funkcja wartości"]];
+        cell = `<select data-c="scale_type" data-k="${k}">${types.map(([v, t]) => opt(v, t, s.type === v)).join("")}</select>` +
+          (s.type === "direct" ? "" : `<div><input type="text" data-c="scale_text" data-k="${k}" value="${esc(s.text)}" placeholder="${s.type === "value_function" ? "x:ocena x:ocena …" : "najgorsza → najlepsza (puste: z danych)"}" style="width:190px;margin-top:3px"></div>`) +
+          (s.type === "value_function" ? `<div><select data-c="scale_interp" data-k="${k}" class="small">${opt("piecewise", "odcinkami liniowo", s.interp !== "quadratic")}${opt("quadratic", "parabola (MNK)", s.interp === "quadratic")}</select></div>` : "");
+      } else cell = `<input type="text" data-c="${f}" data-k="${k}" value="${esc(cellStr(c[f]))}" style="width:${f === "fuzzy_weight" ? 130 : 80}px">`;
+      h += `<td>${cell}</td>`;
+    });
+    h += "</tr>";
+  }
+  h += "</thead><tbody>";
+  p.variants.forEach((v, i) => {
+    h += `<tr><td class="l"><input type="text" data-v="${i}" value="${esc(v)}" style="width:90px">` +
+      ` <button class="btn small" data-del-v="${i}" title="Usuń wariant" style="padding:1px 6px">×</button></td>` +
+      p.criteria.map((_, k) => `<td><input type="text" data-i="${i}" data-k="${k}" value="${esc(cellStr(p.values[i][k]))}" style="width:${FUZZY_VALUES.has(m) ? 110 : 80}px;text-align:right"></td>`).join("") + "</tr>";
+  });
+  h += "</tbody></table>";
+  $("bk-editor").innerHTML = h;
+  $("bk-editor").querySelectorAll("[data-c=scale_type]").forEach((e) => e.addEventListener("change", () => {
+    const c = p.criteria[+e.dataset.k]; try { bookRead(); } catch (err) {} c.scale = { type: e.value }; bookRender(); }));
+  $("bk-editor").querySelectorAll("[data-del-c]").forEach((b) => b.addEventListener("click", () => {
+    bookRead(); const k = +b.dataset.delC; if (p.criteria.length <= 1) return;
+    p.criteria.splice(k, 1); p.values.forEach((r) => r.splice(k, 1)); bookRender(); }));
+  $("bk-editor").querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
+    bookRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
+    p.variants.splice(i, 1); p.values.splice(i, 1); bookRender(); }));
+  bookRenderOptions();
+}
+
+function bookRenderOptions() {
+  const m = BK.method, o = BK.options;
+  let h = "";
+  const sel = (key, label, choices, def) => `<label>${esc(label)} <select data-o="${key}">` +
+    choices.map(([v, t]) => opt(v, t, (o[key] ?? def) === v)).join("") + "</select></label>";
+  if (m === "saw" || m === "fsaw") h += sel("normalization", "Normalizacja:", [["minmax", "unitaryzacja (2.3)"], ["ratio", "ilorazowa (2.1–2.2)"]], m === "saw" ? "minmax" : "ratio");
+  if (m === "smart") h += sel("weights", "Wagi:", [["auto", "automatycznie"], ["swing", "rozpiętości (punkty)"], ["given", "podane wagi"], ["roc", "ROC z rang"], ["rank_sum", "suma rang"]], "auto");
+  if (m === "smarter") h += sel("weights", "Wagi z rang:", [["roc", "ROC (2.11)"], ["rank_sum", "suma rang (2.12)"]], "roc");
+  if (m === "topsis") h += `<label>Rząd metryki p: <input type="text" data-o="metric" value="${numStr(o.metric ?? 2)}" style="width:60px"></label>`;
+  if (m === "fuzzy_topsis") {
+    h += sel("cost_norm", "Kryteria kosztowe:", [["min_l", "min l (rozdz. 14, Chen)"], ["min_u", "min u (wzór 7.10 w druku)"]], "min_l");
+    const ref = o.reference || {};
+    h += `<label>Punkt idealny (opcjonalnie): <input type="text" data-o="ref_ideal" value="${esc((ref.ideal || []).map(cellStr).join(" | "))}" placeholder="l; m; u | l; m; u | …" style="width:260px"></label>`;
+    h += `<label>Antyidealny: <input type="text" data-o="ref_anti" value="${esc((ref.anti_ideal || []).map(cellStr).join(" | "))}" placeholder="l; m; u | …" style="width:260px"></label>`;
+  }
+  if (m === "vikor") {
+    h += `<label>q: <input type="text" data-o="q" value="${numStr(o.q ?? 0.5)}" style="width:60px"></label>`;
+    h += sel("w2", "Warunek W2:", [["both", "a′ najlepszy w S i R (książka)"], ["either", "w S lub R (Opricovic, Tzeng)"]], "both");
+  }
+  $("bk-options").innerHTML = h || "<span class='muted small'>Brak opcji.</span>";
+}
+
+function bookRead() {
+  const p = BK.problem, m = BK.method;
+  const ed = $("bk-editor");
+  ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
+  ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = parseCell(e.value); });
+  ed.querySelectorAll("[data-c]").forEach((e) => {
+    const c = p.criteria[+e.dataset.k], f = e.dataset.c, s = e.value.trim();
+    if (f === "name") c.name = s;
+    else if (f === "direction") c.direction = s;
+    else if (f === "fuzzy_weight") { if (s) { const v = parseNumbers(s); if (v.length !== 3) throw new Error(`${c.name}: waga rozmyta wymaga trzech liczb`); c.fuzzy_weight = v; } else delete c.fuzzy_weight; }
+    else if (f === "scale_type") { c.scale = Object.assign({}, typeof c.scale === "object" ? c.scale : {}, { type: s }); }
+    else if (f === "scale_interp") { if (c.scale && c.scale.type === "value_function") c.scale.interpolation = s; }
+    else if (f === "scale_text") {
+      const sc = c.scale || { type: "linear" };
+      delete sc.points; delete sc.worst; delete sc.best;
+      if (sc.type === "value_function") {
+        sc.points = s.split(/\s+/).filter(Boolean).map((tok) => { const [x, y] = tok.split(":"); if (y === undefined) throw new Error(`${c.name}: punkt „${tok}” — użyj zapisu x:ocena`); return [parseNum(x), parseNum(y)]; });
+      } else if (sc.type === "linear" && s) {
+        const parts = s.split(/→|->/); if (parts.length !== 2) throw new Error(`${c.name}: zakres wpisz jako „najgorsza → najlepsza”`);
+        sc.worst = parseNum(parts[0]); sc.best = parseNum(parts[1]);
+      }
+      c.scale = sc;
+    } else if (s === "") delete c[f];
+    else c[f] = parseNum(s);
+  });
+  const o = {};
+  $("bk-options").querySelectorAll("[data-o]").forEach((e) => {
+    const k = e.dataset.o, s = e.value.trim();
+    if (k === "metric" || k === "q") o[k] = parseNum(s);
+    else if (k === "ref_ideal" || k === "ref_anti") { if (s) { o.reference = o.reference || {}; o.reference[k === "ref_ideal" ? "ideal" : "anti_ideal"] = s.split("|").map(parseCell); } }
+    else if (!(k === "weights" && s === "auto")) o[k] = s;
+  });
+  BK.options = o;
+}
+
+const STEP_LABELS = {
+  weights: "Wagi kryteriów", normalized: "Macierz znormalizowana", weighted: "Macierz ważona", scores_0_100: "Oceny w skali 0–100",
+  fuzzy_weights: "Wagi rozmyte", fuzzy_scores: "Rozmyta użyteczność p̃ᵢ", ideal: "Rozwiązanie idealne", anti_ideal: "Rozwiązanie antyidealne",
+  d_plus: "Odległość od idealnego d⁺", d_minus: "Odległość od antyidealnego d⁻", d_plus_by_criterion: "Odległości od idealnego wg kryteriów",
+  d_minus_by_criterion: "Odległości od antyidealnego wg kryteriów", f_star: "f* (punkt idealny)", f_minus: "f₋ (punkt antyidealny)",
+  r: "Znormalizowane odległości rₖᵢ", S: "S (średnia ważona odległość)", R: "R (maks. ważona odległość)", Q: "Q",
+  points: "Punkty", max_points: "Maks. punktów",
+};
+function fmtCell(v) { return Array.isArray(v) ? "(" + v.map((x) => fmt(x)).join("; ") + ")" : (typeof v === "number" ? fmt(v) : esc(v ?? "—")); }
+
+function bookRun() {
+  let req;
+  try { bookRead(); req = { method: BK.method, options: BK.options, problem: BK.problem }; }
+  catch (e) { $("bk-out").style.display = "block"; $("bk-out").innerHTML = note("Błąd danych: " + e.message, "bad"); return; }
+  const r = call("book_run", JSON.stringify(req));
+  const out = $("bk-out"); out.style.display = "block";
+  if (r.error) { out.innerHTML = note(r.error, "bad"); return; }
+  const V = r.variants, C = r.criteria, st = r.steps;
+  let h = `<h2>Wynik: ${esc(BK.methods[r.method].title)}</h2>`;
+  h += note((r.best.length > 1 ? "Najlepsze warianty: " : "Najlepszy wariant: ") + r.best.join(", "), "ok");
+  const order = V.map((v, i) => i).sort((a, b) => r.ranks[a] - r.ranks[b] || a - b);
+  h += `<div class="tablewrap">` + table(["Ranga", "Wariant", r.scores.label],
+    order.map((i) => [String(r.ranks[i]), V[i], fmt(r.scores.values[i])]), { raw: true,
+      cellClass: (i, j) => (j === 1 ? "l" : "") + (r.best.includes(V[order[i]]) ? " hl" : "") }) + "</div>";
+  if (r.method === "vikor") {
+    h += `<div class="small" style="margin:8px 0">Ranking Q: ${st.ranking_Q.join(", ")} · ranking S: ${st.ranking_S.join(", ")} · ranking R: ${st.ranking_R.join(", ")}<br>` +
+      `DQ = ${fmt(st.DQ)}; W1 (akceptowalna przewaga): <b>${st.W1 ? "spełniony" : "niespełniony"}</b>; W2 (stabilność): <b>${st.W2 ? "spełniony" : "niespełniony"}</b>. ${esc(st.compromise_rule)}</div>`;
+  }
+  for (const n of r.notes) h += note(n, "warn");
+  h += "<h3>Wyniki pośrednie</h3>";
+  const PER_CRIT = new Set(["weights", "fuzzy_weights", "ideal", "anti_ideal", "f_star", "f_minus", "max_points"]);
+  const PER_VAR = new Set(["d_plus", "d_minus", "S", "R", "Q", "fuzzy_scores"]);
+  for (const [k, v] of Object.entries(st)) {
+    if (!(k in STEP_LABELS) || !Array.isArray(v)) continue;
+    const lab = `<div class="small"><b>${esc(STEP_LABELS[k])}</b></div><div class="tablewrap">`;
+    if (PER_CRIT.has(k)) h += lab + table(["", ...C], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
+    else if (PER_VAR.has(k)) h += lab + table(["", ...V], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
+    else h += lab + table(["Wariant", ...C], v.map((row, i) => [V[i], ...row.map(fmtCell)]), { raw: true }) + "</div>";
+  }
+  if (st.scales) h += `<div class="small muted">Sposób oceny kryteriów: ${st.scales.map((s) => `${esc(s.criterion)} — ${esc({ linear: "liniowo", direct: "bezpośrednio", value_function: "funkcja wartości" }[s.type])}` +
+    (s.type === "linear" ? ` (${fmt(s.worst)} → ${fmt(s.best)})` : "") + (s.coefficients ? ` (y = ${fmt(s.coefficients[0], 5)}x² + ${fmt(s.coefficients[1], 4)}x + ${fmt(s.coefficients[2], 3)})` : "")).join("; ")}</div>`;
+  if (st.weights_method) h += `<div class="small muted">Wagi: ${esc({ swing: "rozpiętości", given: "podane", roc: "ROC", rank_sum: "suma rang" }[st.weights_method])}</div>`;
+  out.innerHTML = h;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+init();
+</script>
+</body>
+</html>
