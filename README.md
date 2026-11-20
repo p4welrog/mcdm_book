@@ -5,7 +5,7 @@ Implementacje metod z książki „Wielokryterialne wspomaganie decyzji. Metody 
 | Pakiet | Zawartość |
 |---|---|
 | `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER), AHP i metody pokrewne (rozdz. 3.1–3.5: AHP, REMBRANDT, rozmyty AHP Mikhailova, ANP z syntezą BOCR, rozmyta ANP Changa), metody punktów referencyjnych (rozdz. 7.1–7.3: TOPSIS, rozmyty TOPSIS, VIKOR), programowanie kompromisowe i dobór metody (rozdz. 9.3); interfejs JSON |
-| `mcdm_cd` | port programów z płyty CD (K. Targiel): StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM) |
+| `mcdm_cd` | port programów z płyty CD (K. Targiel): StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM) oraz ATO-DPR (8.5) |
 
 ## Interfejs JSON (`mcdm_book`)
 
@@ -86,12 +86,14 @@ Tam, gdzie książka zawiera błąd albo jest niejednoznaczna, pakiet przyjmuje 
 
 Rozbieżności w przykładach (P2.1, P2.7, P2.11, P3.14, P5.10, P5.13, P5.15–P5.18, P5.20, P6.7, P6.10, P7.1, P7.4, P7.6–P7.15) opisano w komentarzach testów.
 
+ATO-DPR (`mcdm_cd.AtoDPR`, dialog jak w STEM-DPR: `run(ScriptedAtoDM([...]))` albo generator `dialog()`): opcje `risk`, `dominances` (relacje SD_T; klasa U₂ z przykładu 8.5 to `("FSD", "SSD")`), `almost` (AFSD przy pierwszym wariancie próbnym; przykład 8.5 ją pomija), `tradeoff_rules` (dominacje rozkładów współczynników wymiany: wzór (8.19) — FSD, tekst kroku 7 i przykład 8.5 — FSD i SSD; w przykładzie 8.5 wynik jest ten sam). Rozkład współczynnika wymiany liczony dokładnie ze wszystkich kombinacji (8.15)–(8.16), M = 10 000. Przykład 8.5 (`mcdm_cd.example("przyklad_8_5")`) odtworzony w całości: współczynniki d (tabl. 9–13), relacje T (tabl. 17–19, 21), kolejne warianty próbne a6 → a1 → a4. Tablica 7 przykładu powtarza tablicę 6, a „idealny wektor” w tabl. 20 jest liczony dla całego zbioru, nie dla 𝒜⁽²⁾.
+
 `mcdm_cd` sprawdzono z raportami StDom z przykładów 5.19, 6.13 i 6.15 oraz z przebiegami przykładów 8.2 i 8.4.
 
 ## Strona
 
 `index.html` to jeden plik, który można otworzyć w przeglądarce albo opublikować przez GitHub Pages (Settings → Pages → Deploy from a branch → `main`, `/ (root)`). Przy pierwszym otwarciu potrzebny jest internet, bo Pyodide 0.26.4 jest ładowany z `cdn.jsdelivr.net`. Pliki wczytane przez użytkownika nie opuszczają przeglądarki.
 
-Test strony w przeglądarce: `python tests/e2e_browser.py`. Skrypt sprawdza przykłady z książki we wszystkich zakładkach, edytor AHP, dobór metody i dialogi STEM-DPR oraz INSDECM. Wymaga Playwright; opcje i sposób uruchomienia bez dostępu do CDN opisuje nagłówek skryptu.
+Test strony w przeglądarce: `python tests/e2e_browser.py`. Skrypt sprawdza przykłady z książki we wszystkich zakładkach, edytor AHP, dobór metody i dialogi STEM-DPR, INSDECM i ATO-DPR. Wymaga Playwright; opcje i sposób uruchomienia bez dostępu do CDN opisuje nagłówek skryptu.
 
 Plik buduje skrypt `python web/build.py`: łączy szablon `web/template.html`, kod łączący stronę z pakietami (`web/web.py`), źródła obu pakietów, pliki .mcf z płyty oraz bibliotekę [xlrd](https://github.com/python-excel/xlrd) 2.0.1 (licencja BSD, `web/vendor/`). Po każdej zmianie w pakietach trzeba go uruchomić ponownie.

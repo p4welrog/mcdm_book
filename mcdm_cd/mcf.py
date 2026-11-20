@@ -50,7 +50,13 @@ def _num(v) -> float:
 
 
 def example(name: str = "przyklad_8_1") -> Problem:
-    """Plik .mcf z płyty dołączony do pakietu: "przyklad_8_1" (przykłady 8.1–8.4) albo "Przyklad_1"."""
+    """Plik .mcf z płyty dołączony do pakietu: "przyklad_8_1" (przykłady 8.1–8.4) albo "Przyklad_1";
+    "przyklad_8_5" — dane przykładu 8.5 (jak 8.1, ale rozkłady kryterium f1 wariantów a6 i a8 zamienione)."""
+    if name == "przyklad_8_5":
+        p = read_mcf(Path(__file__).parent / "data" / "przyklad_8_1.mcf")
+        p.dist[5][0], p.dist[7][0] = p.dist[7][0], p.dist[5][0]
+        p.comment = "Przykład 8.5 (ATO-DPR): dane przykładu 8.1 z zamienionymi rozkładami f1 wariantów a6 i a8"
+        return p
     return read_mcf(Path(__file__).parent / "data" / f"{name}.mcf")
 
 

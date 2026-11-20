@@ -7,14 +7,16 @@ from pathlib import Path
 
 from mcdm_cd.distribution import PARAMS, Distribution, better
 from mcdm_cd.dominance import DARA, IDENTICAL, INARA, stdom_report, stochastic_dominance
+from mcdm_cd.ato_dpr import AtoDPR
 from mcdm_cd.insdecm import Insdecm
-from mcdm_cd.mcf import Problem, read_mcf
+from mcdm_cd.mcf import Problem, example as mcf_example, read_mcf
 from mcdm_cd.stem_dpr import StemDPR
 
 DATA = Path(__file__).parent / "mcdm_cd" / "data"
 EXAMPLES = {
     "przyklad_8_1": "przyklad_8_1.mcf — przykłady 8.1–8.4 (4 kryteria, 10 wariantów)",
     "Przyklad_1": "Przyklad_1.mcf — przykład STEM-DPR z instrukcji MCDM (3 kryteria, 20 wariantów)",
+    "przyklad_8_5": "przykład 8.5 (ATO-DPR) — jak 8.1, z zamienionymi rozkładami f1 wariantów a6 i a8",
 }
 
 S = {"problem": None, "method": None, "gen": None, "kind": None}
@@ -62,8 +64,8 @@ def examples() -> str:
 def load_example(name: str) -> str:
     if name not in EXAMPLES:
         raise ValueError(f"Nieznany przykład {name}")
-    p = read_mcf(DATA / f"{name}.mcf")
-    p.source = f"{name}.mcf"
+    p = mcf_example(name)
+    p.source = f"{name}.mcf" if name != "przyklad_8_5" else "przykład 8.5"
     S["problem"] = p
     return _out(_summary(p))
 
@@ -150,6 +152,19 @@ def _question(q) -> dict:
     p = s.p
     a = q.args
     out = {"kind": q.kind}
+    if S["kind"] == "ato":
+        it = a[0]
+        out["it"] = _ato_it(s, it)
+        if q.kind == "satisfied" and it.number == 1:
+            out["first_d"] = [[p.variants[j]] + [_f(x) for x in s.first_d[j]] for j in range(p.n)]
+            out["criteria"] = p.criteria
+        if q.kind == "satisfied" and it.number > 1:
+            out["prev"] = _ato_steps(s, s.history[-2])
+        if q.kind == "order":
+            out["criteria"] = p.criteria
+        if q.kind == "relax":
+            out["criterion"] = p.criteria[a[1]]
+        return out
     if S["kind"] == "stem":
         it = a[0]
         out["it"] = _stem_it(s, it)
@@ -201,9 +216,30 @@ def _question(q) -> dict:
     return out
 
 
+def _ato_it(s: AtoDPR, it) -> dict:
+    p = s.p
+    return {"number": it.number, "trial": p.variants[it.trial],
+            "rows": [[p.criteria[k], _f(it.means[k]), _f(it.ideal[k]), "max" if p.maximize[k] else "min"]
+                     for k in range(p.m)],
+            "active_variants": [p.variants[i] for i in it.active_variants]}
+
+
+def _ato_steps(s: AtoDPR, it) -> dict:
+    p = s.p
+    V = lambda xs: [p.variants[i] for i in xs]
+    return {"number": it.number, "order": [p.criteria[k] for k in it.order or []],
+            "candidates": V(it.candidates or []), "relaxed": it.relaxed, "arbitrary": it.arbitrary,
+            "steps": [{"rule": st.rule, "criteria": [p.criteria[k] for k in st.criteria], "before": V(st.before),
+                       "removed": [[p.variants[i], [[p.variants[j], t] for j, t in by]] for i, by in st.removed.items()],
+                       "after": V(st.after)} for st in it.steps]}
+
+
 def _result(r) -> dict:
     s = S["method"]
     p = s.p
+    if S["kind"] == "ato":
+        return {"done": True, "status": r.status, "solution": None if r.solution is None else p.variants[r.solution],
+                "prev": _ato_steps(s, r.iterations[-2]) if len(r.iterations) > 1 and r.iterations[-2].order else None}
     if S["kind"] == "stem":
         return {"done": True, "status": r.status,
                 "solution": None if r.solution is None else p.variants[r.solution]}
@@ -219,9 +255,13 @@ def _step(answer, first=False) -> str:
     return _out(_question(q))
 
 
-def start(kind: str, orient_min: bool = True, vba_compat: bool = False) -> str:
+def start(kind: str, orient_min: bool = True, vba_compat: bool = False, options: str = "{}") -> str:
     p = S["problem"]
-    if kind == "stem":
+    if kind == "ato":
+        o = json.loads(options or "{}")
+        S["method"] = AtoDPR(p, risk=o.get("risk", DARA), dominances=o.get("dominances"),
+                             almost=bool(o.get("almost", True)), tradeoff_rules=o.get("tradeoff_rules", ["FSD"]))
+    elif kind == "stem":
         S["method"] = StemDPR(p, orient_min=orient_min)
     elif kind == "insdecm":
         S["method"] = Insdecm(p, orient_min=orient_min, vba_compat=vba_compat)
@@ -240,6 +280,8 @@ def answer(payload: str) -> str:
         v = {int(pp): (None if psi is None else float(psi)) for pp, psi in (v or {}).items()}
     elif kind == "condition" and v is not None:
         v = (int(v[0]), int(v[1]), float(v[2]))
+    elif kind == "order" and v is not None:
+        v = [int(k) for k in v]
     elif kind in ("choose_criterion",) and v is not None:
         v = int(v)
     elif kind == "threshold":

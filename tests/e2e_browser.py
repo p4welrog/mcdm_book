@@ -294,6 +294,27 @@ def main():
         shot("insdecm")
 
         page.click("nav button[data-tab=dane]")
+        page.select_option("#example", "przyklad_8_5")
+        page.wait_for_function("document.querySelector('#problem-info').innerText.includes('8.5')", timeout=15000)
+        page.click("nav button[data-tab=ato]")
+        page.click("#ato-book"); page.click("#ato-start")
+
+        def order(names):
+            crit = ["X1", "X2", "X3", "X4"]
+            for pos, nm in enumerate(names):
+                page.select_option(f"#ato-q select[data-ato-pos='{pos}']", str(crit.index(nm)))
+            page.click("#ato-ord-ok")
+
+        check("a6" in page.locator("#ato-log h4").last.inner_text(), "ATO-DPR: pierwszy wariant próbny a6 (tabl. 13)")
+        q("#ato-q", "Nie"); order(["X3", "X4", "X1", "X2"])
+        log = page.locator("#ato-log").inner_text()
+        check("a1, a7" in log and "a1" in page.locator("#ato-log h4").last.inner_text(), "ATO-DPR: współczynniki wymiany → a1 (tabl. 17–19)")
+        q("#ato-q", "Nie"); order(["X2", "X3", "X4", "X1"])
+        q("#ato-q", "Tak")
+        check(page.locator("#ato-log .note").last.inner_text().endswith("a4"), "ATO-DPR (przykład 8.5)")
+        shot("ato_dpr")
+
+        page.click("nav button[data-tab=dane]")
         page.select_option("#example", "Przyklad_1")
         check("20 wariantów" in page.locator("#problem-info").inner_text(), "odczyt Przyklad_1.mcf")
         page.set_input_files("#mcf-file", str(ROOT / "mcdm_cd" / "data" / "przyklad_8_1.mcf"))
