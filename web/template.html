@@ -92,7 +92,7 @@
   <h1>Wielokryterialne wspomaganie decyzji — metody z książki w przeglądarce</h1>
   <p>Metody z książki „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik, PWE 2014):
      metody addytywne i metody punktów referencyjnych (pakiet <code>mcdm_book</code>) oraz dominacje stochastyczne i metody
-     interaktywne STEM-DPR i INSDECM — port programów K. Targiela z płyty CD (pakiet <code>mcdm_cd</code>). Obliczenia wykonuje
+     interaktywne STEM-DPR i INSDECM — port programów K. Targiela z płyty CD — oraz ATO-DPR (pakiet <code>mcdm_cd</code>). Obliczenia wykonuje
      kod Pythona uruchomiony w przeglądarce przez Pyodide.</p>
 </header>
 
@@ -103,6 +103,7 @@
   <button data-tab="stdom">Dominacje stochastyczne (StDom)</button>
   <button data-tab="stem">STEM-DPR</button>
   <button data-tab="insdecm">INSDECM</button>
+  <button data-tab="ato">ATO-DPR</button>
   <button data-tab="info">O programie</button>
 </nav>
 
@@ -271,6 +272,29 @@
     <div class="card" id="ins-box" style="display:none"><div id="ins-log" class="log"></div><div id="ins-q"></div></div>
   </section>
 
+  <!-- ATO-DPR -->
+  <section id="tab-ato">
+    <div class="card">
+      <h2>Metoda ATO-DPR</h2>
+      <p class="muted small">Interaktywna metoda z rozdz. 8.5. Pierwszy wariant próbny jak w STEM-DPR; gdy nie satysfakcjonuje, porządkujesz kryteria
+        od najbardziej do najmniej satysfakcjonującego, a nowy wariant próbny program wybiera przez dominacje rozkładów współczynników wymiany
+        (zysk na kryterium do poprawy na jednostkę straty na pozostałych) i rozkładów ocen. Przebieg z <b>przykładu 8.5</b> (zadanie „przykład 8.5”
+        w zakładce Dane, ustawienia przykładu): „Nie”, kolejność X3, X4, X1, X2; „Nie”, kolejność X2, X3, X4, X1; „Tak” — rozwiązaniem jest a4.</p>
+      <div class="row">
+        <label>Dominacje zgodne z funkcją użyteczności: <select id="ato-sd">
+          <option value="DARA">awersja do ryzyka: FSD, SSD, TSD</option>
+          <option value="U2">klasa U₂: FSD, SSD (przykład 8.5)</option>
+          <option value="INARA">skłonność do ryzyka: FSD, SISD, TISD</option></select></label>
+        <label><input type="checkbox" id="ato-almost" checked> prawie dominacja AFSD przy pierwszym wariancie próbnym</label>
+        <label>Współczynniki wymiany: <select id="ato-tr"><option value="FSD">FSD (wzór 8.19)</option>
+          <option value="FSD,SSD">FSD i SSD (przykład 8.5)</option></select></label>
+        <button class="btn" id="ato-book" type="button">ustawienia przykładu 8.5</button>
+        <button class="btn primary" id="ato-start">Rozpocznij dialog</button>
+      </div>
+    </div>
+    <div class="card" id="ato-box" style="display:none"><div id="ato-log" class="log"></div><div id="ato-q"></div></div>
+  </section>
+
   <!-- INFO -->
   <section id="tab-info">
     <div class="card">
@@ -279,7 +303,7 @@
         „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik):</p>
       <ul>
         <li><b>StDom 1.09b</b> (K. Targiel, 2014) — zwykłe i porządkowe dominacje stochastyczne (FSD, SSD, TSD, SISD, TISD, AFSD, OFSD, OSSD, OAFSD, OASSD);</li>
-        <li><b>MCDM 1.00</b> (K. Targiel, 2013) — metody interaktywne STEM-DPR i INSDECM dla dyskretnych problemów decyzyjnych w warunkach ryzyka (rozdz. 8).</li>
+        <li><b>MCDM 1.00</b> (K. Targiel, 2013) — metody interaktywne STEM-DPR i INSDECM dla dyskretnych problemów decyzyjnych w warunkach ryzyka (rozdz. 8). Metoda ATO-DPR (8.5) nie ma odpowiednika w programach z płyty — zaimplementowana według książki i sprawdzona na przykładzie 8.5.</li>
       </ul>
       <p>Wyniki portu sprawdzono z raportami StDom wklejonymi do przykładów 5.19, 6.13 i 6.15, z arkuszem „Wyniki” pliku <code>StDom_Przyklad1</code>
         (przykład 1.10) oraz z przebiegami przykładów 8.2 (STEM-DPR) i 8.4 (INSDECM).</p>
@@ -424,6 +448,7 @@ function loadProblem(fn) {
   if ($("tab-dom").classList.contains("active")) renderDominance();
   $("stem-box").style.display = "none";
   $("ins-box").style.display = "none";
+  $("ato-box").style.display = "none";
 }
 
 $("example").addEventListener("change", (e) => loadProblem(() => call("load_example", e.target.value)));
@@ -517,7 +542,7 @@ function cdfChart(g, fx, fy) {
 }
 
 // ---------- dialogi ----------
-const D = { stem: { log: "stem-log", q: "stem-q" }, insdecm: { log: "ins-log", q: "ins-q" } };
+const D = { stem: { log: "stem-log", q: "stem-q" }, insdecm: { log: "ins-log", q: "ins-q" }, ato: { log: "ato-log", q: "ato-q" } };
 let active = null;
 
 function logAdd(kind, html) { $(D[kind].log).insertAdjacentHTML("beforeend", html); }
@@ -546,24 +571,37 @@ const yesNo = (cancel = true) => [{ label: "Tak", value: true, cls: "yes" }, { l
 function startDialog(kind) {
   if (!problem) return;
   $(D[kind].log).innerHTML = ""; $(D[kind].q).innerHTML = "";
-  $(kind === "stem" ? "stem-box" : "ins-box").style.display = "block";
+  $({ stem: "stem-box", insdecm: "ins-box", ato: "ato-box" }[kind]).style.display = "block";
   logAdd(kind, `<div class="muted small">Zadanie: ${esc(problem.source)}</div>`);
   let q;
   try {
-    q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false)
+    if (kind === "ato") {
+      const sd = $("ato-sd").value;
+      const o = { risk: sd === "INARA" ? "INARA" : "DARA", almost: $("ato-almost").checked, tradeoff_rules: $("ato-tr").value.split(",") };
+      if (sd === "U2") o.dominances = ["FSD", "SSD"];
+      q = call("start", "ato", true, false, JSON.stringify(o));
+    } else q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false)
                         : call("start", "insdecm", !$("ins-raw").checked, $("ins-vba").checked);
   } catch (e) { showError(D[kind].log, e); return; }
   handle(kind, q);
 }
 $("stem-start").addEventListener("click", () => startDialog("stem"));
 $("ins-start").addEventListener("click", () => startDialog("insdecm"));
+$("ato-start").addEventListener("click", () => startDialog("ato"));
+$("ato-book").addEventListener("click", () => { $("ato-sd").value = "U2"; $("ato-almost").checked = false; $("ato-tr").value = "FSD,SSD"; });
 
 function handle(kind, q) {
   if (q.done) return finish(kind, q);
-  (kind === "stem" ? STEM : INS)[q.kind](q);
+  ({ stem: STEM, insdecm: INS, ato: ATO })[kind][q.kind](q);
 }
 
 function finish(kind, r) {
+  if (kind === "ato") {
+    if (r.status === "final") logAdd(kind, note(`Rozwiązanie końcowe: ${r.solution}`, "ok"));
+    else if (r.status === "impossible") logAdd(kind, note("Nie ma wariantu lepszego na wskazanym kryterium.", "bad"));
+    else logAdd(kind, note("Przerwano dialog.", "bad"));
+    return;
+  }
   if (kind === "stem") {
     if (r.status === "final") logAdd(kind, note(`Rozwiązanie końcowe: ${r.solution}`, "ok"));
     else if (r.status === "impossible") logAdd(kind, note("Wyznaczenie rozwiązania metodą STEM-DPR jest niemożliwe.", "bad"));
@@ -604,6 +642,46 @@ const STEM = {
     };
     $("stem-thr-ok").addEventListener("click", go);
     $("stem-thr").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  },
+};
+
+// ATO-DPR
+function atoStepsHtml(pv) {
+  let h = `<div class="small" style="margin-top:6px"><b>Wyznaczenie nowego wariantu próbnego</b> (kolejność kryteriów: ${pv.order.map(esc).join(", ")}; do poprawy: ${esc(pv.order[pv.order.length - 1])})</div>`;
+  h += `<div class="small">Kandydaci (ocena na ${esc(pv.order[pv.order.length - 1])} niezdominowana przez wariant próbny${pv.relaxed ? ", bez wcześniejszych ograniczeń (8.18)" : ""}): ${pv.candidates.map(esc).join(", ")}</div>`;
+  const rows = pv.steps.map((st) => [st.rule === "tradeoff" ? `wymiana T(${st.criteria[0]}, ${st.criteria[1]})` : `oceny na ${st.criteria[0]}`,
+    st.before.join(", "), st.removed.map(([v, by]) => `${v} (${by.map(([w, t]) => `${w} ${t}`).join(", ")})`).join("; ") || "—", st.after.join(", ")]);
+  if (rows.length) h += `<div class="tablewrap">` + table(["Krok", "ℬ przed", "usunięte (zdominowane przez)", "ℬ po"], rows, { raw: true }) + "</div>";
+  if (pv.arbitrary) h += note("Zbiór ℬ nie zawęził się do jednego wariantu — wybrano pierwszy (krok 12).", "warn");
+  return h;
+}
+const ATO = {
+  satisfied(q) {
+    const it = q.it;
+    if (q.prev) logAdd("ato", atoStepsHtml(q.prev));
+    if (q.first_d) logAdd("ato", `<div class="small"><b>Pierwszy wariant próbny (jak STEM-DPR): współczynniki d</b></div><div class="tablewrap">` +
+      table(["Wariant", ...q.criteria, "max"], q.first_d.map((r) => [r[0], ...r.slice(1).map((x) => fmt(x)), fmt(Math.max(...r.slice(1)))]), { raw: true }) + "</div>");
+    logAdd("ato", `<h4>Iteracja ${it.number} — wariant próbny: ${esc(it.trial)}</h4>` +
+      `<div class="tablewrap">` + table(["Kryterium", "Średnia", "Najlepsza średnia w zbiorze", "Kierunek"],
+        it.rows.map((r) => [r[0], fmt(r[1]), fmt(r[2]), r[3]]), { raw: true }) + "</div>" +
+      `<div class="small">Warianty rozpatrywane: ${it.active_variants.map(esc).join(", ")}</div>`);
+    bindButtons("ato", q.kind, "Czy oceny wariantu próbnego są satysfakcjonujące?", yesNo());
+  },
+  order(q) {
+    const question = "Uporządkuj kryteria od najbardziej do najmniej satysfakcjonującej oceny (ostatnie — do poprawy)";
+    const n = q.criteria.length;
+    ask("ato", `<div class="q">${esc(question)}</div><div class="row">` + q.criteria.map((_, pos) =>
+      `<label class="small">${pos + 1}. <select data-ato-pos="${pos}">${q.criteria.map((c, k) => opt(k, c, k === pos)).join("")}</select></label>`).join(" ") +
+      ` <button class="btn primary" id="ato-ord-ok">OK</button> <button class="btn" id="ato-ord-cancel">Anuluj</button></div><div id="ato-ord-err"></div>`);
+    $("ato-ord-ok").addEventListener("click", () => {
+      const v = [...document.querySelectorAll("[data-ato-pos]")].map((e) => +e.value);
+      if (new Set(v).size !== n) { $("ato-ord-err").innerHTML = note("Każde kryterium musi wystąpić dokładnie raz.", "bad"); return; }
+      reply("ato", q.kind, question, v.map((k) => q.criteria[k]).join(", "), v);
+    });
+    $("ato-ord-cancel").addEventListener("click", () => reply("ato", q.kind, question, "Anuluj", null));
+  },
+  relax(q) {
+    bindButtons("ato", q.kind, `Żaden wariant ze zbioru rozpatrywanego nie poprawia oceny na ${q.criterion}. Czy pominąć wcześniejsze ograniczenia (wzór 8.18)?`, yesNo());
   },
 };
 
