@@ -97,7 +97,7 @@
 </header>
 
 <nav id="tabs">
-  <button data-tab="rank" class="active">Metody rozdz. 2 i 7</button>
+  <button data-tab="rank" class="active">Ranking (rozdz. 2, 3, 7)</button>
   <button data-tab="dane">Dane (.mcf)</button>
   <button data-tab="dom">Wykryte dominacje</button>
   <button data-tab="stdom">Dominacje stochastyczne (StDom)</button>
@@ -110,7 +110,7 @@
   <!-- METODY ROZDZ. 2 I 7 -->
   <section id="tab-rank" class="active">
     <div class="card">
-      <h2>Ranking wariantów: metody addytywne (rozdz. 2) i punkty referencyjne (rozdz. 7)</h2>
+      <h2>Ranking wariantów: metody addytywne (rozdz. 2), AHP i pokrewne (rozdz. 3), punkty referencyjne (rozdz. 7)</h2>
       <div class="row">
         <label>Metoda: <select id="bk-method"></select></label>
         <label>Przykład z książki: <select id="bk-example"></select></label>
@@ -691,6 +691,7 @@ const CRIT_FIELDS = {
   saw: ["direction", "weight"], scoring: ["max_points"], fsaw: ["direction", "fuzzy_weight"],
   smart: ["direction", "swing", "scale"], smarter: ["direction", "rank", "scale"],
   topsis: ["direction", "weight"], fuzzy_topsis: ["direction", "weight"], vikor: ["direction", "weight"],
+  ahp: [], rembrandt: [], fuzzy_ahp: [],
 };
 const FIELD_LABEL = { direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
   swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny" };
@@ -703,6 +704,7 @@ const HINTS = {
   topsis: "Oceny liczbowe, kierunki i wagi.",
   fuzzy_topsis: "Oceny jako trójkątne liczby rozmyte: l; m; u (np. 2; 3; 5). Pojedyncza liczba x oznacza (x; x; x).",
   vikor: "Oceny liczbowe, kierunki i wagi. Wynik Q — im mniej, tym lepiej.",
+  ahp: "", rembrandt: "", fuzzy_ahp: "",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
 
@@ -726,10 +728,16 @@ function bookInit() {
   $("bk-method").innerHTML = Object.entries(BK.methods).map(([k, m]) => opt(k, `${m.title} (${m.chapter})`)).join("");
   $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); });
   $("bk-load").addEventListener("click", () => bookLoadExample($("bk-example").value));
-  $("bk-add-var").addEventListener("click", () => { bookRead(); const p = BK.problem;
-    p.variants.push("a" + (p.variants.length + 1)); p.values.push(p.criteria.map(() => 0)); bookRender(); });
-  $("bk-add-crit").addEventListener("click", () => { bookRead(); const p = BK.problem;
-    p.criteria.push({ name: "f" + (p.criteria.length + 1), direction: "max" }); p.values.forEach((r) => r.push(0)); bookRender(); });
+  $("bk-add-var").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
+    p.variants.push("a" + (p.variants.length + 1)); p.values.push(p.criteria.map(() => ahpm ? null : 0));
+    if (ahpm) for (const key of Object.keys(p.comparisons || {})) { const M = p.comparisons[key]; M.forEach((r) => r.push(null)); M.push(M.map(() => null).concat([BK.method === "rembrandt" ? 0 : 1])); M[M.length - 1].length = M.length; }
+    bookRender(); });
+  $("bk-add-crit").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
+    let name = "f" + (p.criteria.length + 1); while (p.criteria.some((c) => c.name === name)) name += "'";
+    p.criteria.push(ahpm ? { name, source: "comparisons" } : { name, direction: "max" }); p.values.forEach((r) => r.push(ahpm ? null : 0));
+    if (ahpm) { p.comparisons = p.comparisons || {}; p.comparisons[name] = blankMatrix(p.variants.length, BK.method);
+      if (p.criteria_comparisons) { const M = p.criteria_comparisons; M.forEach((r) => r.push(null)); const row = M.map(() => null); row.push(BK.method === "rembrandt" ? 0 : 1); M.push(row); } }
+    bookRender(); });
   $("bk-json-toggle").addEventListener("click", () => {
     const box = $("bk-json-box"); const show = box.style.display === "none";
     if (show) { try { bookRead(); } catch (e) {} $("bk-json").value = JSON.stringify({ method: BK.method, options: BK.options, problem: BK.problem }, null, 1); }
@@ -755,7 +763,12 @@ function bookExamplesForMethod() {
 }
 
 function bookLoadExample(id) {
-  if (!id) { BK.problem = emptyProblem(); BK.options = {}; }
+  if (!id) {
+    BK.problem = emptyProblem(); BK.options = {};
+    if (AHP_FAMILY.has(BK.method)) { const p = BK.problem; p.values = p.variants.map(() => p.criteria.map(() => null));
+      p.criteria = p.criteria.map((c) => ({ name: c.name })); p.criteria_comparisons = blankMatrix(2, BK.method);
+      p.comparisons = Object.fromEntries(p.criteria.map((c) => [c.name, blankMatrix(3, BK.method)])); }
+  }
   else {
     const ex = call("book_example", id);
     BK.method = ex.method; BK.options = ex.options || {}; BK.problem = ex.problem;
@@ -780,6 +793,7 @@ function bookRender() {
   const info = BK.methods[m];
   $("bk-method-info").innerHTML = `<b>${esc(info.title)}</b> — rozdz. ${esc(info.chapter)}. Potrzebne: ${esc(info.needs)}.`;
   $("bk-hint").textContent = HINTS[m] || "";
+  if (AHP_FAMILY.has(m)) { ahpRender(); bookRenderOptions(); return; }
   let h = `<table><thead><tr><th class="l">Wariant \\ kryterium</th>` +
     p.criteria.map((c, k) => `<th><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:110px;font-weight:600">` +
       ` <button class="btn small" data-del-c="${k}" title="Usuń kryterium" style="padding:1px 6px">×</button></th>`).join("") + "</tr>";
@@ -834,16 +848,33 @@ function bookRenderOptions() {
     h += `<label>Punkt idealny (opcjonalnie): <input type="text" data-o="ref_ideal" value="${esc((ref.ideal || []).map(cellStr).join(" | "))}" placeholder="l; m; u | l; m; u | …" style="width:260px"></label>`;
     h += `<label>Antyidealny: <input type="text" data-o="ref_anti" value="${esc((ref.anti_ideal || []).map(cellStr).join(" | "))}" placeholder="l; m; u | …" style="width:260px"></label>`;
   }
+  if (m === "ahp") {
+    h += sel("method", "Wektor skali:", [["eigen", "wektor własny"], ["saaty", "metoda Saaty'ego (3.16–3.18)"], ["power", "metoda potęgowa (ε)"], ["geometric", "średnie geometryczne"]], "eigen");
+    h += `<label>ε (metoda potęgowa): <input type="text" data-o="eps" value="${numStr(o.eps ?? "")}" placeholder="0,001" style="width:70px"></label>`;
+  }
+  if (m === "rembrandt") {
+    const g = [[String(Math.LN2), "ln 2"], [String(Math.log(Math.SQRT2)), "ln √2"]];
+    const cur = (v, d) => String(v ?? d);
+    h += `<label>γ dla kryteriów: <select data-o="gamma_criteria">${g.map(([v, tx]) => opt(v, tx, Math.abs(Number(cur(o.gamma_criteria, Math.log(Math.SQRT2))) - Number(v)) < 1e-9)).join("")}</select></label>`;
+    h += `<label>γ dla wariantów: <select data-o="gamma_variants">${g.map(([v, tx]) => opt(v, tx, Math.abs(Number(cur(o.gamma_variants, Math.LN2)) - Number(v)) < 1e-9)).join("")}</select></label>`;
+  }
+  if (m === "fuzzy_ahp") {
+    h += `<label>Poziomy α: <input type="text" data-o="alphas" value="${esc((o.alphas || [0, 0.2, 0.4, 0.6, 0.8, 1]).map(numStr).join(" "))}" style="width:180px"></label>`;
+    h += `<label>Tolerancja d: <input type="text" data-o="d" value="${numStr(o.d ?? 1)}" style="width:60px"></label>`;
+  }
   if (m === "vikor") {
     h += `<label>q: <input type="text" data-o="q" value="${numStr(o.q ?? 0.5)}" style="width:60px"></label>`;
     h += sel("w2", "Warunek W2:", [["both", "a′ najlepszy w S i R (książka)"], ["either", "w S lub R (Opricovic, Tzeng)"]], "both");
   }
   $("bk-options").innerHTML = h || "<span class='muted small'>Brak opcji.</span>";
+  if (AHP_FAMILY.has(m)) $("bk-options").querySelectorAll("select").forEach((e) => e.addEventListener("change", () => {
+    BK.options = bookReadOptions(); $("bk-editor").querySelectorAll("table[data-matrix]").forEach((tb) => ahpCheck(tb.dataset.matrix)); }));
 }
 
 function bookRead() {
   const p = BK.problem, m = BK.method;
   const ed = $("bk-editor");
+  if (AHP_FAMILY.has(m)) { ahpRead(); BK.options = bookReadOptions(); return; }
   ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
   ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = parseCell(e.value); });
   ed.querySelectorAll("[data-c]").forEach((e) => {
@@ -866,14 +897,21 @@ function bookRead() {
     } else if (s === "") delete c[f];
     else c[f] = parseNum(s);
   });
+  BK.options = bookReadOptions();
+}
+
+function bookReadOptions() {
   const o = {};
   $("bk-options").querySelectorAll("[data-o]").forEach((e) => {
     const k = e.dataset.o, s = e.value.trim();
     if (k === "metric" || k === "q") o[k] = parseNum(s);
     else if (k === "ref_ideal" || k === "ref_anti") { if (s) { o.reference = o.reference || {}; o.reference[k === "ref_ideal" ? "ideal" : "anti_ideal"] = s.split("|").map(parseCell); } }
+    else if (k === "eps" || k === "d") { if (s) o[k] = parseNum(s); }
+    else if (k === "gamma_criteria" || k === "gamma_variants") o[k] = Number(s);
+    else if (k === "alphas") { if (s) o.alphas = parseNumbers(s); }
     else if (!(k === "weights" && s === "auto")) o[k] = s;
   });
-  BK.options = o;
+  return o;
 }
 
 const STEP_LABELS = {
@@ -882,13 +920,14 @@ const STEP_LABELS = {
   d_plus: "Odległość od idealnego d⁺", d_minus: "Odległość od antyidealnego d⁻", d_plus_by_criterion: "Odległości od idealnego wg kryteriów",
   d_minus_by_criterion: "Odległości od antyidealnego wg kryteriów", f_star: "f* (punkt idealny)", f_minus: "f₋ (punkt antyidealny)",
   r: "Znormalizowane odległości rₖᵢ", S: "S (średnia ważona odległość)", R: "R (maks. ważona odległość)", Q: "Q",
-  points: "Punkty", max_points: "Maks. punktów",
+  points: "Punkty", max_points: "Maks. punktów", criteria_weights: "Wektor skali kryteriów c̄",
+  C: "Macierz C (wektory skali wariantów względem kryteriów)", product: "Iloczyn Πₖ (cₖⁱ)^c̄ₖ (przed normalizacją)",
 };
 function fmtCell(v) { return Array.isArray(v) ? "(" + v.map((x) => fmt(x)).join("; ") + ")" : (typeof v === "number" ? fmt(v) : esc(v ?? "—")); }
 
 function bookRun() {
   let req;
-  try { bookRead(); req = { method: BK.method, options: BK.options, problem: BK.problem }; }
+  try { bookRead(); req = { method: BK.method, options: BK.options, problem: AHP_FAMILY.has(BK.method) ? ahpRequestProblem() : BK.problem }; }
   catch (e) { $("bk-out").style.display = "block"; $("bk-out").innerHTML = note("Błąd danych: " + e.message, "bad"); return; }
   const r = call("book_run", JSON.stringify(req));
   const out = $("bk-out"); out.style.display = "block";
@@ -906,14 +945,27 @@ function bookRun() {
   }
   for (const n of r.notes) h += note(n, "warn");
   h += "<h3>Wyniki pośrednie</h3>";
-  const PER_CRIT = new Set(["weights", "fuzzy_weights", "ideal", "anti_ideal", "f_star", "f_minus", "max_points"]);
-  const PER_VAR = new Set(["d_plus", "d_minus", "S", "R", "Q", "fuzzy_scores"]);
+  const PER_CRIT = new Set(["weights", "fuzzy_weights", "ideal", "anti_ideal", "f_star", "f_minus", "max_points", "criteria_weights"]);
+  const PER_VAR = new Set(["d_plus", "d_minus", "S", "R", "Q", "fuzzy_scores", "product"]);
   for (const [k, v] of Object.entries(st)) {
     if (!(k in STEP_LABELS) || !Array.isArray(v)) continue;
     const lab = `<div class="small"><b>${esc(STEP_LABELS[k])}</b></div><div class="tablewrap">`;
     if (PER_CRIT.has(k)) h += lab + table(["", ...C], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
     else if (PER_VAR.has(k)) h += lab + table(["", ...V], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
     else h += lab + table(["Wariant", ...C], v.map((row, i) => [V[i], ...row.map(fmtCell)]), { raw: true }) + "</div>";
+  }
+  if (Array.isArray(st.matrices) && st.matrices.length) {
+    h += "<h3>Macierze porównań</h3>";
+    for (const mt of st.matrices) {
+      const labels = mt.name === "kryteria" ? C : V;
+      h += `<div class="small" style="margin-top:6px"><b>${mt.name === "kryteria" ? "Kryteria" : "Kryterium " + esc(mt.name)}</b>` +
+        (mt.from_values ? " — wektor skali z ocen liczbowych" : "") +
+        (mt.lambda_max !== undefined ? ` — λmax = ${fmt(mt.lambda_max)}, μ = ${fmt(mt.mu)}, γ = ${fmt(mt.gamma)} (${mt.consistent ? "zgodne" : "niezgodne"})` : "") +
+        (mt.lambda_min !== undefined ? ` — najmniejsze λ* = ${fmt(mt.lambda_min)}` : "") + "</div>";
+      h += `<div class="tablewrap">` + table(["", ...labels], [["wektor skali", ...mt.w.map((x) => fmt(x))]], { raw: true }) + "</div>";
+      if (mt.levels) h += `<div class="tablewrap">` + table(["α", ...labels.map((l) => "ω " + l), "λ*"],
+        mt.levels.map((l) => [fmt(l.alpha), ...l.w.map((x) => fmt(x)), fmt(l.lambda)]), { raw: true }) + "</div>";
+    }
   }
   if (st.scales) h += `<div class="small muted">Sposób oceny kryteriów: ${st.scales.map((s) => `${esc(s.criterion)} — ${esc({ linear: "liniowo", direct: "bezpośrednio", value_function: "funkcja wartości" }[s.type])}` +
     (s.type === "linear" ? ` (${fmt(s.worst)} → ${fmt(s.best)})` : "") + (s.coefficients ? ` (y = ${fmt(s.coefficients[0], 5)}x² + ${fmt(s.coefficients[1], 4)}x + ${fmt(s.coefficients[2], 3)})` : "")).join("; ")}</div>`;
@@ -922,6 +974,192 @@ function bookRun() {
   out.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ---------- edytor macierzy porównań (AHP, REMBRANDT, rozmyty AHP) ----------
+const AHP_FAMILY = new Set(["ahp", "rembrandt", "fuzzy_ahp"]);
+
+function fracStr(x) {
+  if (!Number.isFinite(x)) return "";
+  for (let k = 1; k <= 9; k++) {
+    if (Math.abs(x - k) < 1e-9) return String(k);
+    if (Math.abs(x - 1 / k) < 1e-9) return "1/" + k;
+  }
+  return numStr(Number(x.toFixed(4)));
+}
+function parseFrac(s) {
+  s = String(s).trim().replace(",", ".");
+  if (s.includes("/")) { const [a, b] = s.split("/"); return parseFloat(a) / parseFloat(b); }
+  return parseFloat(s);
+}
+function entryStr(v) {
+  if (v === null || v === undefined) return "";
+  if (Array.isArray(v)) return v.map((x) => typeof x === "number" ? fracStr(x) : String(x)).join("; ");
+  return typeof v === "number" ? fracStr(v) : String(v);
+}
+function entryParse(s, m) {
+  s = s.trim();
+  if (!s) return null;
+  if (m === "fuzzy_ahp" && s.includes(";")) {
+    const parts = s.split(";").map((t) => t.trim()).filter(Boolean);
+    if (parts.length !== 3) throw new Error(`„${s}”: liczba trójkątna wymaga trzech wartości l; m; u`);
+    parts.forEach((t) => { if (!Number.isFinite(parseFrac(t))) throw new Error(`Niepoprawna liczba „${t}”`); });
+    return parts;
+  }
+  if (!Number.isFinite(parseFrac(s))) throw new Error(`Niepoprawna wartość „${s}”`);
+  return m === "rembrandt" ? parseFrac(s) : s;
+}
+function recipStr(s, m) {
+  if (!s.trim()) return "";
+  if (m === "rembrandt") { const v = parseFrac(s); return Number.isFinite(v) ? numStr(-v) : ""; }
+  if (m === "fuzzy_ahp" && s.includes(";")) {
+    const p = s.split(";").map((t) => parseFrac(t));
+    if (p.length !== 3 || p.some((x) => !(x > 0))) return "";
+    return [1 / p[2], 1 / p[1], 1 / p[0]].map(fracStr).join("; ");
+  }
+  const v = parseFrac(s);
+  return v > 0 ? fracStr(1 / v) : "";
+}
+function blankMatrix(n, m) {
+  return Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? (m === "rembrandt" ? 0 : 1) : null));
+}
+function ensureAhpData(p, m) {
+  const n = p.criteria.length, k = p.variants.length;
+  const fix = (M, size) => {
+    M = M || blankMatrix(size, m);
+    while (M.length < size) M.push([]);
+    M.length = size;
+    return M.map((row, i) => { row = row.slice(0, size); while (row.length < size) row.push(i === row.length ? (m === "rembrandt" ? 0 : 1) : null); return row; });
+  };
+  if (p.criteria_comparisons || m !== "ahp") p.criteria_comparisons = fix(p.criteria_comparisons, n);
+  p.comparisons = p.comparisons || {};
+  for (const c of p.criteria) {
+    const fromValues = c.source === "values" || (!(c.name in p.comparisons) && m !== "rembrandt" && p.values && p.values.some((r) => r[p.criteria.indexOf(c)] !== null && r[p.criteria.indexOf(c)] !== undefined));
+    if (fromValues && m !== "rembrandt") { c.source = "values"; delete p.comparisons[c.name]; }
+    else { c.source = "comparisons"; p.comparisons[c.name] = fix(p.comparisons[c.name], k); }
+  }
+  for (const key of Object.keys(p.comparisons)) if (!p.criteria.some((c) => c.name === key)) delete p.comparisons[key];
+  if (!p.values) p.values = p.variants.map(() => p.criteria.map(() => null));
+}
+
+function matrixHtml(id, labels, M, m) {
+  let h = `<table data-matrix="${id}"><thead><tr><th></th>${labels.map((l) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>`;
+  labels.forEach((li, i) => {
+    h += `<tr><th class="l">${esc(li)}</th>`;
+    labels.forEach((_, j) => {
+      if (i === j) h += `<td class="diag c">${m === "rembrandt" ? 0 : 1}</td>`;
+      else h += `<td><input type="text" data-mi="${i}" data-mj="${j}" value="${esc(entryStr(M[i][j]))}" style="width:${m === "fuzzy_ahp" ? 105 : 58}px;text-align:center"></td>`;
+    });
+    h += "</tr>";
+  });
+  return h + `</tbody></table><div class="small muted" data-check="${id}"></div>`;
+}
+
+function ahpRender() {
+  const p = BK.problem, m = BK.method;
+  ensureAhpData(p, m);
+  const scaleHint = m === "ahp" ? "Skala Saaty'ego 1–9 (np. 3, 1/5). Wpis nad przekątną uzupełnia odwrotność pod nią." :
+    m === "rembrandt" ? "Oceny δ od −8 do 8 (tabl. 3.3); wpis uzupełnia −δ po drugiej stronie przekątnej." :
+    "Trójkątne liczby rozmyte l; m; u (np. 1; 3; 4) albo liczby; wpis uzupełnia odwrotność (1/u; 1/m; 1/l).";
+  let h = `<div class="small muted" style="margin-bottom:8px">${esc(scaleHint)}</div>`;
+  h += `<div class="row small" style="margin-bottom:6px"><b>Warianty:</b> ${p.variants.map((v, i) =>
+    `<input type="text" data-v="${i}" value="${esc(v)}" style="width:70px"><button class="btn small" data-del-v="${i}" style="padding:1px 6px">×</button>`).join(" ")}</div>`;
+  h += `<h3 style="margin-top:6px">Kryteria</h3><table><thead><tr><th class="l">Kryterium</th>${m === "rembrandt" ? "" : "<th>wektor skali</th>"}<th></th></tr></thead><tbody>`;
+  p.criteria.forEach((c, k) => {
+    h += `<tr><td class="l"><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:120px"></td>`;
+    if (m !== "rembrandt") h += `<td><select data-c="source" data-k="${k}">${opt("comparisons", "z porównań parami", c.source !== "values")}${opt("values", "z ocen liczbowych", c.source === "values")}</select>` +
+      (c.source === "values" ? ` <select data-c="direction" data-k="${k}">${opt("max", "max", c.direction !== "min")}${opt("min", "min", c.direction === "min")}</select>` : "") + "</td>";
+    h += `<td><button class="btn small" data-del-c="${k}" style="padding:1px 6px">×</button></td></tr>`;
+  });
+  h += "</tbody></table>";
+  const useCC = !!p.criteria_comparisons;
+  h += `<h3>Porównania kryteriów</h3>`;
+  if (m === "ahp") h += `<label class="small"><input type="checkbox" id="ahp-use-cc"${useCC ? " checked" : ""}> wyznacz wagi z porównań parami (inaczej: podane wagi)</label>`;
+  if (useCC) h += `<div class="tablewrap">${matrixHtml("cc", p.criteria.map((c) => c.name), p.criteria_comparisons, m)}</div>`;
+  else h += `<div class="row small">${p.criteria.map((c, k) => `<label>${esc(c.name)}: <input type="text" data-c="weight" data-k="${k}" value="${esc(numStr(c.weight ?? ""))}" style="width:60px"></label>`).join(" ")}</div>`;
+  for (const c of p.criteria) {
+    const k = p.criteria.indexOf(c);
+    h += `<h3>Warianty względem kryterium ${esc(c.name)}</h3>`;
+    if (c.source === "values") {
+      h += `<div class="row small">${p.variants.map((v, i) => `<label>${esc(v)}: <input type="text" data-i="${i}" data-k="${k}" value="${esc(cellStr(p.values[i][k]))}" style="width:60px"></label>`).join(" ")}</div>`;
+    } else h += `<div class="tablewrap">${matrixHtml("c:" + c.name, p.variants, p.comparisons[c.name], m)}</div>`;
+  }
+  $("bk-editor").innerHTML = h;
+  const ed = $("bk-editor");
+  ed.querySelectorAll("table[data-matrix] input").forEach((inp) => inp.addEventListener("input", () => {
+    const i = +inp.dataset.mi, j = +inp.dataset.mj;
+    const other = inp.closest("table").querySelector(`input[data-mi="${j}"][data-mj="${i}"]`);
+    if (other) other.value = recipStr(inp.value, m);
+    ahpCheck(inp.closest("table").dataset.matrix);
+  }));
+  ed.querySelectorAll("[data-c=source]").forEach((e) => e.addEventListener("change", () => {
+    ahpRead(); const c = p.criteria[+e.dataset.k]; c.source = e.value;
+    if (e.value === "comparisons") p.comparisons[c.name] = blankMatrix(p.variants.length, m);
+    else delete p.comparisons[c.name];
+    bookRender(); }));
+  if ($("ahp-use-cc")) $("ahp-use-cc").addEventListener("change", (e) => { ahpRead();
+    if (e.target.checked) p.criteria_comparisons = blankMatrix(p.criteria.length, m); else delete p.criteria_comparisons; bookRender(); });
+  ed.querySelectorAll("[data-del-c]").forEach((b) => b.addEventListener("click", () => {
+    ahpRead(); const k = +b.dataset.delC; if (p.criteria.length <= 1) return;
+    delete p.comparisons[p.criteria[k].name];
+    p.criteria.splice(k, 1); p.values.forEach((r) => r.splice(k, 1));
+    if (p.criteria_comparisons) { p.criteria_comparisons.splice(k, 1); p.criteria_comparisons.forEach((r) => r.splice(k, 1)); }
+    bookRender(); }));
+  ed.querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
+    ahpRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
+    p.variants.splice(i, 1); p.values.splice(i, 1);
+    for (const key of Object.keys(p.comparisons)) { p.comparisons[key].splice(i, 1); p.comparisons[key].forEach((r) => r.splice(i, 1)); }
+    bookRender(); }));
+  ed.querySelectorAll("table[data-matrix]").forEach((t) => ahpCheck(t.dataset.matrix));
+}
+
+function readMatrix(table, m) {
+  const n = table.querySelectorAll("tbody tr").length;
+  const M = blankMatrix(n, m);
+  table.querySelectorAll("input").forEach((e) => { M[+e.dataset.mi][+e.dataset.mj] = entryParse(e.value, m); });
+  return M;
+}
+
+function ahpCheck(id) {
+  const m = BK.method;
+  const t = $("bk-editor").querySelector(`table[data-matrix="${CSS.escape(id)}"]`);
+  const out = $("bk-editor").querySelector(`[data-check="${CSS.escape(id)}"]`);
+  if (!t || !out || m === "fuzzy_ahp") { if (out) out.textContent = ""; return; }
+  let M;
+  try { M = readMatrix(t, m); } catch (e) { out.innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; return; }
+  if (M.some((row, i) => row.some((v, j) => i !== j && v === null))) { out.textContent = "Uzupełnij wszystkie porównania."; return; }
+  const r = call("book_matrix_check", JSON.stringify({ matrix: M, kind: m === "rembrandt" ? "rembrandt" : "ahp",
+    method: BK.options.method || "eigen", gamma: id === "cc" ? Math.log(Math.SQRT2) : (BK.options.gamma_variants ?? Math.LN2) }));
+  if (r.error) { out.innerHTML = `<span style="color:var(--bad)">${esc(r.error)}</span>`; return; }
+  let s = "Wektor skali: " + r.w.map((x) => fmt(x, 3)).join("; ");
+  if (r.lambda_max !== undefined) s += ` · λmax = ${fmt(r.lambda_max, 3)} · γ = ${fmt(r.gamma, 3)} ` +
+    (r.consistent ? "<b style='color:var(--ok)'>zgodne</b>" : "<b style='color:var(--bad)'>niezgodne (γ > 0,1)</b>");
+  if (r.notes && r.notes.length) s += " · " + esc(r.notes.join(" "));
+  out.innerHTML = s;
+}
+
+function ahpRead() {
+  const p = BK.problem, m = BK.method, ed = $("bk-editor");
+  ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
+  const renames = [];
+  ed.querySelectorAll("[data-c]").forEach((e) => {
+    const c = p.criteria[+e.dataset.k], f = e.dataset.c, s = e.value.trim();
+    if (f === "name" && s !== c.name) renames.push([c, s]);
+    else if (f === "source") c.source = s;
+    else if (f === "direction") c.direction = s;
+    else if (f === "weight") { if (s) c.weight = parseNum(s); else delete c.weight; }
+  });
+  ed.querySelectorAll("[data-i]").forEach((e) => { const s = e.value.trim(); p.values[+e.dataset.i][+e.dataset.k] = s ? parseNum(s) : null; });
+  ed.querySelectorAll("table[data-matrix]").forEach((t) => {
+    const id = t.dataset.matrix, M = readMatrix(t, m);
+    if (id === "cc") p.criteria_comparisons = M; else p.comparisons[id.slice(2)] = M;
+  });
+  for (const [c, s] of renames) { if (c.name in p.comparisons) { p.comparisons[s] = p.comparisons[c.name]; delete p.comparisons[c.name]; } c.name = s; }
+}
+
+function ahpRequestProblem() {
+  const p = JSON.parse(JSON.stringify(BK.problem));
+  for (const c of p.criteria) delete c.source;
+  return p;
+}
 init();
 </script>
 </body>

@@ -4,7 +4,7 @@ Implementacje metod z książki „Wielokryterialne wspomaganie decyzji. Metody 
 
 | Pakiet | Zawartość |
 |---|---|
-| `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER) i metody punktów referencyjnych (rozdz. 7.1–7.3: TOPSIS, rozmyty TOPSIS, VIKOR); interfejs JSON |
+| `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER), AHP i metody pokrewne (rozdz. 3.1–3.3: AHP, REMBRANDT, rozmyty AHP Mikhailova), metody punktów referencyjnych (rozdz. 7.1–7.3: TOPSIS, rozmyty TOPSIS, VIKOR); interfejs JSON |
 | `mcdm_cd` | port programów z płyty CD (K. Targiel): StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM) |
 
 ## Interfejs JSON (`mcdm_book`)
@@ -29,18 +29,22 @@ Zadanie:
 
 Oceny rozmyte zapisuje się jako trójki `[l, m, u]`. Pola kryteriów zależne od metody: `weight`, `fuzzy_weight` (FSAW), `swing` i `scale` (SMART), `rank` (SMARTER), `max_points` (scoring).
 
+Metody z rozdz. 3 przyjmują macierze porównań w polach zadania: `criteria_comparisons` (n×n) i `comparisons` (`{"nazwa kryterium": macierz m×m}`). Elementy macierzy mogą być liczbami, napisami typu `"1/7"` albo trójkami `[l, m, u]` (rozmyty AHP). Puste pola (`null`) są uzupełniane odwrotnością elementu symetrycznego, a w REMBRANDT wartością −δ. Kryterium bez macierzy w AHP dostaje wektor skali z ocen liczbowych w `values`. Model Mikhailova rozwiązuje wbudowany solver programowania liniowego (`mcdm_book/lp.py`), więc strona nie musi ładować scipy.
+
 Wynik każdej metody ma te same pola: `scores` (wartości i kierunek: im więcej/mniej, tym lepiej), `ranks` (z remisami), `ranking`, `best`, `steps` (wyniki pośrednie metody) i `notes` (uwagi, m.in. przyjęte konwencje).
 
 W Pythonie: `from mcdm_book import run; run({...})`.
 
 ## Zgodność z książką
 
-Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P7.1, P7.3, P7.4, tablice 2.1–2.2 i rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376).
+Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P3.3, P3.4, P3.7, P3.10, P7.1, P7.3, P7.4, tablice 2.1–2.2 i rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376).
 
 Tam, gdzie książka zawiera błąd albo jest niejednoznaczna, pakiet przyjmuje wersję poprawną i to opisuje:
 - **Normalizacja kosztowa:** liczona jako (max − f)/(max − min). Wzory (2.4) i (2.9) w druku są tożsame z (2.3) i (2.8).
 - **Funkcja wartości SMART:** interpolacja odcinkowo-liniowa przez punkty bisekcji albo parabola MNK. Parabolę stosuje Excel w przykładach 2.5 i 2.7.
 - **Rozmyty TOPSIS:** kryteria kosztowe są normalizowane przez min l, jak w rozdz. 14. Wzór (7.10) z druku jest dostępny jako opcja `cost_norm="min_u"`.
+- **AHP:** λmax w metodzie Saaty'ego liczę z (Aω)ᵢ/ωᵢ, jak w przykładzie 3.3. Wzór (3.19) w druku ma ωᵀA. Domyślną metodą jest wektor własny, a metodę Saaty'ego i metodę potęgową z ε wybiera się opcją. Wartość r dla m > 10 pochodzi z Saaty (1980), spoza tablicy 3.1.
+- **REMBRANDT:** domyślnie γ = ln √2 dla kryteriów i ln 2 dla wariantów, jak w (3.28). Przykład 3.7 liczy warianty z ln √2. Wektor końcowy jest agregowany geometrycznie (3.31), bo wartości z druku nie dają się odtworzyć.
 - **VIKOR:** reguła wyboru rozwiązania kompromisowego jest wzięta z Opricovic i Tzeng (2004), bo w książce wyliczenie przypadków jest niekompletne. Warunek W2 domyślnie wymaga, by a′ był najlepszy w rankingach S i R (jak w książce).
 
 Rozbieżności w przykładach (P2.1, P2.7, P2.11, P7.1, P7.4) opisano w komentarzach testów.

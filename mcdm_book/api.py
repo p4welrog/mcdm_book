@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, reference
+from . import additive, ahp, reference
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -29,6 +29,19 @@ METHODS: Dict[str, Dict[str, Any]] = {
     "smarter": {"fn": additive.smarter, "chapter": "2.4", "title": "SMARTER",
                 "needs": "oceny; rangi kryteriów rank (1 = najważniejsze); opcjonalnie best/worst w scale",
                 "options": {"weights": "auto | roc | rank_sum | given | swing"}},
+    "ahp": {"fn": ahp.ahp, "chapter": "3.1", "title": "AHP",
+            "needs": "criteria_comparisons (macierz n×n, skala 1–9 Saaty'ego) lub wagi; comparisons {kryterium: macierz m×m} "
+                     "albo oceny liczbowe kryterium w values",
+            "options": {"method": ahp.PRIORITY_METHODS, "eps": "dokładność metody potęgowej"},
+            "scale": ahp.SAATY_SCALE},
+    "rembrandt": {"fn": ahp.rembrandt, "chapter": "3.2", "title": "REMBRANDT",
+                  "needs": "criteria_comparisons i comparisons z ocenami δ ∈ {−8, …, 8} (tabl. 3.3)",
+                  "options": {"gamma_criteria": "γ dla kryteriów (domyślnie ln √2)",
+                              "gamma_variants": "γ dla wariantów (domyślnie ln 2; przykład 3.7 używa ln √2)"}},
+    "fuzzy_ahp": {"fn": ahp.fuzzy_ahp, "chapter": "3.3", "title": "Rozmyty AHP (Mikhailov)",
+                  "needs": "macierze porównań z trójkami [l, m, u] (lub nazwami ze skali Changa, tabl. 3.4)",
+                  "options": {"alphas": "poziomy α (domyślnie 0; 0,2; …; 1)", "d": "tolerancja względem zera (domyślnie 1)"},
+                  "scale": {k: list(v) for k, v in ahp.CHANG_SCALE.items()}},
     "topsis": {"fn": reference.topsis, "chapter": "7.1", "title": "TOPSIS",
                "needs": "oceny liczbowe, kierunki, wagi", "options": {"metric": "rząd metryki p (domyślnie 2)"}},
     "fuzzy_topsis": {"fn": reference.fuzzy_topsis, "chapter": "7.2", "title": "Rozmyty TOPSIS",
