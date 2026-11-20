@@ -119,6 +119,36 @@
       <div id="bk-method-info" class="muted small" style="margin-top:8px"></div>
     </div>
     <div class="card">
+      <details id="sel-box"><summary style="cursor:pointer"><b>Nie wiesz, którą metodę wybrać? Dobór metody (rozdz. 9.3)</b></summary>
+        <p class="muted small">Model typu Gershona: metody pakietu są wariantami, cechy problemu — kryteriami (obowiązkowymi albo punktowanymi),
+          ranking według odległości od rozwiązania idealnego (wzór 9.1).</p>
+        <div class="row small" style="align-items:flex-start;gap:22px">
+          <div><b>Rodzaje ocen</b><br>
+            <label><input type="checkbox" name="sel-data" value="numeric" checked> liczby</label><br>
+            <label><input type="checkbox" name="sel-data" value="qualitative"> oceny jakościowe</label><br>
+            <label><input type="checkbox" name="sel-data" value="fuzzy"> oceny niepewne (trójki)</label><br>
+            <label><input type="checkbox" name="sel-data" value="stochastic"> rozkłady prawdopodobieństwa</label></div>
+          <div><b>Decydent potrafi podać</b><br>
+            <label><input type="checkbox" name="sel-pref" value="weights" checked> wagi</label><br>
+            <label><input type="checkbox" name="sel-pref" value="swing"> wagi rozpiętości</label><br>
+            <label><input type="checkbox" name="sel-pref" value="ranks"> kolejność kryteriów</label><br>
+            <label><input type="checkbox" name="sel-pref" value="pairwise"> porównania parami</label><br>
+            <label><input type="checkbox" name="sel-pref" value="fuzzy_weights"> wagi niepewne</label><br>
+            <label><input type="checkbox" name="sel-pref" value="points"> punkty</label><br>
+            <label><input type="checkbox" name="sel-pref" value="dialog"> odpowiedzi w dialogu</label></div>
+          <div><b>Wymagania</b><br>
+            <label>Wynik: <select id="sel-output"><option value="ranking">pełny ranking</option><option value="scores">wynik liczbowy</option><option value="best">najlepszy wariant</option></select></label><br>
+            <label>Kompensacja: <select id="sel-comp"><option value="full">pełna</option><option value="limited">ograniczona</option></select></label><br>
+            <label><input type="checkbox" id="sel-ref"> znane poziomy aspiracji / rezerwacji</label><br>
+            <label>Wyjaśnienie wyniku innym: <select id="sel-explain"><option value="low">mało ważne</option><option value="medium" selected>średnio</option><option value="high">bardzo ważne</option></select></label><br>
+            <label>Wiedza decydenta o metodach: <select id="sel-expertise"><option value="low">mała</option><option value="medium" selected>średnia</option><option value="high">duża</option></select></label><br>
+            <label>Czas decydenta: <select id="sel-time"><option value="low">mało</option><option value="medium" selected>średnio</option><option value="high">dużo</option></select></label></div>
+        </div>
+        <div class="btns"><button class="btn primary" id="sel-run">Dobierz metodę</button></div>
+        <div id="sel-out"></div>
+      </details>
+    </div>
+    <div class="card">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">Zadanie</h2>
         <div class="row small">
           <button class="btn small" id="bk-add-var">+ wariant</button>
@@ -691,9 +721,9 @@ const CRIT_FIELDS = {
   saw: ["direction", "weight"], scoring: ["max_points"], fsaw: ["direction", "fuzzy_weight"],
   smart: ["direction", "swing", "scale"], smarter: ["direction", "rank", "scale"],
   topsis: ["direction", "weight"], fuzzy_topsis: ["direction", "weight"], vikor: ["direction", "weight"],
-  ahp: [], rembrandt: [], fuzzy_ahp: [],
+  ahp: [], rembrandt: [], fuzzy_ahp: [], compromise: ["direction", "weight", "mandatory"],
 };
-const FIELD_LABEL = { direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
+const FIELD_LABEL = { mandatory: "obowiązkowe", direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
   swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny" };
 const HINTS = {
   saw: "Oceny liczbowe; wagi sumujące się do 1 (inne są normalizowane).",
@@ -705,6 +735,7 @@ const HINTS = {
   fuzzy_topsis: "Oceny jako trójkątne liczby rozmyte: l; m; u (np. 2; 3; 5). Pojedyncza liczba x oznacza (x; x; x).",
   vikor: "Oceny liczbowe, kierunki i wagi. Wynik Q — im mniej, tym lepiej.",
   ahp: "", rembrandt: "", fuzzy_ahp: "",
+  compromise: "Odległość L1 od rozwiązania idealnego (wzór 9.1). Kryterium obowiązkowe eliminuje wariant, który nie osiąga wartości idealnej.",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
 
@@ -724,6 +755,7 @@ function emptyProblem() {
 
 function bookInit() {
   BK.methods = call("book_methods");
+  delete BK.methods.select_method;
   BK.examples = call("book_examples");
   $("bk-method").innerHTML = Object.entries(BK.methods).map(([k, m]) => opt(k, `${m.title} (${m.chapter})`)).join("");
   $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); });
@@ -753,6 +785,7 @@ function bookInit() {
     } catch (e) { $("bk-hint").innerHTML = note("Niepoprawny JSON: " + e.message, "bad"); }
   });
   $("bk-run").addEventListener("click", bookRun);
+  $("sel-run").addEventListener("click", selRun);
   bookExamplesForMethod();
   bookLoadExample("P2.1");
 }
@@ -801,7 +834,8 @@ function bookRender() {
     h += `<tr><th class="l small">${esc(FIELD_LABEL[f])}</th>`;
     p.criteria.forEach((c, k) => {
       let cell;
-      if (f === "direction") cell = `<select data-c="direction" data-k="${k}">${opt("max", "max (zysk)", c.direction !== "min")}${opt("min", "min (koszt)", c.direction === "min")}</select>`;
+      if (f === "mandatory") cell = `<input type="checkbox" data-c="mandatory" data-k="${k}"${c.mandatory ? " checked" : ""}>`;
+      else if (f === "direction") cell = `<select data-c="direction" data-k="${k}">${opt("max", "max (zysk)", c.direction !== "min")}${opt("min", "min (koszt)", c.direction === "min")}</select>`;
       else if (f === "scale") {
         const s = scaleStr(c.scale);
         const types = m === "smarter" ? [["linear", "liniowo"], ["direct", "bezpośrednio"]] :
@@ -862,6 +896,9 @@ function bookRenderOptions() {
     h += `<label>Poziomy α: <input type="text" data-o="alphas" value="${esc((o.alphas || [0, 0.2, 0.4, 0.6, 0.8, 1]).map(numStr).join(" "))}" style="width:180px"></label>`;
     h += `<label>Tolerancja d: <input type="text" data-o="d" value="${numStr(o.d ?? 1)}" style="width:60px"></label>`;
   }
+  if (m === "compromise") {
+    h += `<label>Wartości idealne (opcjonalnie): <input type="text" data-o="ideal" value="${esc((o.ideal || []).map(numStr).join(" "))}" placeholder="domyślnie najlepsze w danych" style="width:260px"></label>`;
+  }
   if (m === "vikor") {
     h += `<label>q: <input type="text" data-o="q" value="${numStr(o.q ?? 0.5)}" style="width:60px"></label>`;
     h += sel("w2", "Warunek W2:", [["both", "a′ najlepszy w S i R (książka)"], ["either", "w S lub R (Opricovic, Tzeng)"]], "both");
@@ -879,7 +916,8 @@ function bookRead() {
   ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = parseCell(e.value); });
   ed.querySelectorAll("[data-c]").forEach((e) => {
     const c = p.criteria[+e.dataset.k], f = e.dataset.c, s = e.value.trim();
-    if (f === "name") c.name = s;
+    if (f === "mandatory") { if (e.checked) c.mandatory = true; else delete c.mandatory; }
+    else if (f === "name") c.name = s;
     else if (f === "direction") c.direction = s;
     else if (f === "fuzzy_weight") { if (s) { const v = parseNumbers(s); if (v.length !== 3) throw new Error(`${c.name}: waga rozmyta wymaga trzech liczb`); c.fuzzy_weight = v; } else delete c.fuzzy_weight; }
     else if (f === "scale_type") { c.scale = Object.assign({}, typeof c.scale === "object" ? c.scale : {}, { type: s }); }
@@ -909,6 +947,7 @@ function bookReadOptions() {
     else if (k === "eps" || k === "d") { if (s) o[k] = parseNum(s); }
     else if (k === "gamma_criteria" || k === "gamma_variants") o[k] = Number(s);
     else if (k === "alphas") { if (s) o.alphas = parseNumbers(s); }
+    else if (k === "ideal") { if (s) o.ideal = parseNumbers(s); }
     else if (!(k === "weights" && s === "auto")) o[k] = s;
   });
   return o;
@@ -921,6 +960,7 @@ const STEP_LABELS = {
   d_minus_by_criterion: "Odległości od antyidealnego wg kryteriów", f_star: "f* (punkt idealny)", f_minus: "f₋ (punkt antyidealny)",
   r: "Znormalizowane odległości rₖᵢ", S: "S (średnia ważona odległość)", R: "R (maks. ważona odległość)", Q: "Q",
   points: "Punkty", max_points: "Maks. punktów", criteria_weights: "Wektor skali kryteriów c̄",
+  contributions: "Składniki odległości L1 (wkład kryteriów)", worst: "Najgorsze osiągnięte wartości",
   C: "Macierz C (wektory skali wariantów względem kryteriów)", product: "Iloczyn Πₖ (cₖⁱ)^c̄ₖ (przed normalizacją)",
 };
 function fmtCell(v) { return Array.isArray(v) ? "(" + v.map((x) => fmt(x)).join("; ") + ")" : (typeof v === "number" ? fmt(v) : esc(v ?? "—")); }
@@ -935,7 +975,7 @@ function bookRun() {
   const V = r.variants, C = r.criteria, st = r.steps;
   let h = `<h2>Wynik: ${esc(BK.methods[r.method].title)}</h2>`;
   h += note((r.best.length > 1 ? "Najlepsze warianty: " : "Najlepszy wariant: ") + r.best.join(", "), "ok");
-  const order = V.map((v, i) => i).sort((a, b) => r.ranks[a] - r.ranks[b] || a - b);
+  const order = V.map((v, i) => i).filter((i) => r.ranks[i] !== null).sort((a, b) => r.ranks[a] - r.ranks[b] || a - b);
   h += `<div class="tablewrap">` + table(["Ranga", "Wariant", r.scores.label],
     order.map((i) => [String(r.ranks[i]), V[i], fmt(r.scores.values[i])]), { raw: true,
       cellClass: (i, j) => (j === 1 ? "l" : "") + (r.best.includes(V[order[i]]) ? " hl" : "") }) + "</div>";
@@ -945,7 +985,7 @@ function bookRun() {
   }
   for (const n of r.notes) h += note(n, "warn");
   h += "<h3>Wyniki pośrednie</h3>";
-  const PER_CRIT = new Set(["weights", "fuzzy_weights", "ideal", "anti_ideal", "f_star", "f_minus", "max_points", "criteria_weights"]);
+  const PER_CRIT = new Set(["worst", "weights", "fuzzy_weights", "ideal", "anti_ideal", "f_star", "f_minus", "max_points", "criteria_weights"]);
   const PER_VAR = new Set(["d_plus", "d_minus", "S", "R", "Q", "fuzzy_scores", "product"]);
   for (const [k, v] of Object.entries(st)) {
     if (!(k in STEP_LABELS) || !Array.isArray(v)) continue;
@@ -1159,6 +1199,32 @@ function ahpRequestProblem() {
   const p = JSON.parse(JSON.stringify(BK.problem));
   for (const c of p.criteria) delete c.source;
   return p;
+}
+
+// ---------- dobór metody ----------
+function selRun() {
+  const data = [...document.querySelectorAll("input[name=sel-data]:checked")].map((e) => e.value);
+  const prefs = [...document.querySelectorAll("input[name=sel-pref]:checked")].map((e) => e.value);
+  const profile = { data, preferences: prefs, output: $("sel-output").value, compensation: $("sel-comp").value,
+    reference_levels: $("sel-ref").checked, explain: $("sel-explain").value, expertise: $("sel-expertise").value, time: $("sel-time").value };
+  const r = call("book_run", JSON.stringify({ method: "select_method", profile }));
+  if (r.error) { $("sel-out").innerHTML = note(r.error, "bad"); return; }
+  let h = "";
+  if (r.ranking.length) {
+    h += `<div class="tablewrap">` + table(["Ranga", "Metoda", "L1 (im mniej, tym lepiej)", "Oceny", ""],
+      r.ranking.map((mth) => { const i = r.variants.indexOf(mth);
+        return [String(r.ranks[i]), esc(r.titles[mth]), fmt(r.scores.values[i], 3), esc(r.grade_sources[mth]),
+          BK.methods[mth] ? `<button class="btn small" data-use="${mth}">Użyj</button>` : "<span class='muted small'>pakiet mcdm_cd — zakładki obok</span>"]; }),
+      { raw: true, cellClass: (i, j) => (j === 1 ? "l" : "") + (i === 0 ? " hl" : "") }) + "</div>";
+  }
+  const el = Object.entries(r.elimination_reasons);
+  if (el.length) h += `<div class="small muted">Odrzucone: ${el.map(([m, why]) => `${esc(r.titles[m])} — ${esc(why)}`).join("; ")}</div>`;
+  for (const n of r.notes) h += note(n, "info");
+  $("sel-out").innerHTML = h;
+  $("sel-out").querySelectorAll("[data-use]").forEach((b) => b.addEventListener("click", () => {
+    BK.method = b.dataset.use; $("bk-method").value = BK.method; BK.options = {};
+    bookExamplesForMethod(); bookLoadExample($("bk-example").value); $("sel-box").open = false;
+  }));
 }
 init();
 </script>

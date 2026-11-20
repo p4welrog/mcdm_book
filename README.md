@@ -4,7 +4,7 @@ Implementacje metod z książki „Wielokryterialne wspomaganie decyzji. Metody 
 
 | Pakiet | Zawartość |
 |---|---|
-| `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER), AHP i metody pokrewne (rozdz. 3.1–3.3: AHP, REMBRANDT, rozmyty AHP Mikhailova), metody punktów referencyjnych (rozdz. 7.1–7.3: TOPSIS, rozmyty TOPSIS, VIKOR); interfejs JSON |
+| `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER), AHP i metody pokrewne (rozdz. 3.1–3.3: AHP, REMBRANDT, rozmyty AHP Mikhailova), metody punktów referencyjnych (rozdz. 7.1–7.3: TOPSIS, rozmyty TOPSIS, VIKOR), programowanie kompromisowe i dobór metody (rozdz. 9.3); interfejs JSON |
 | `mcdm_cd` | port programów z płyty CD (K. Targiel): StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM) |
 
 ## Interfejs JSON (`mcdm_book`)
@@ -35,9 +35,17 @@ Wynik każdej metody ma te same pola: `scores` (wartości i kierunek: im więcej
 
 W Pythonie: `from mcdm_book import run; run({...})`.
 
+### Dobór metody
+
+`{"method": "select_method", "profile": {...}}` zwraca ranking metod pakietu dla profilu problemu. Profil opisuje rodzaje ocen, informację o preferencjach, którą decydent potrafi podać, wymaganą postać wyniku, stosunek do kompensacji, znajomość poziomów aspiracji, znaczenie wyjaśnienia wyniku oraz wiedzę i czas decydenta. Listę pól pokazuje `python -m mcdm_book methods`.
+
+Procedura naśladuje model Gershona (rozdz. 9.3): cechy wykluczające (np. rodzaj danych) eliminują metody, a pozostałe są oceniane w skali 0–10 z wagami wynikającymi z profilu. Kolejność ustala odległość L1 od rozwiązania idealnego według wzoru (9.1). Ta sama odległość jest dostępna jako zwykła metoda `compromise`; odtwarza ona wyniki zbiorów R9.2 (model Gershona) i R9.3 (procedura Tecle'a).
+
+Oceny SAW, SMART i TOPSIS opierają się na zbiorze R9.2. Oceny pozostałych metod są moje i można je nadpisać opcją `scores`.
+
 ## Zgodność z książką
 
-Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P3.3, P3.4, P3.7, P3.10, P7.1, P7.3, P7.4, tablice 2.1–2.2 i rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376).
+Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P3.3, P3.4, P3.7, P3.10, P7.1, P7.3, P7.4, R9.2, R9.3, tablice 2.1–2.2 i rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376).
 
 Tam, gdzie książka zawiera błąd albo jest niejednoznaczna, pakiet przyjmuje wersję poprawną i to opisuje:
 - **Normalizacja kosztowa:** liczona jako (max − f)/(max − min). Wzory (2.4) i (2.9) w druku są tożsame z (2.3) i (2.8).
