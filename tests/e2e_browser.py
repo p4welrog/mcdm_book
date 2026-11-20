@@ -75,7 +75,9 @@ def main():
         expected = {"P2.1": ("saw", "a3"), "P2.2": ("scoring", "a3"), "P2.3": ("fsaw", "a3"), "P2.7": ("smart", "a3, a4"),
                     "P2.11": ("smarter", "a4"), "P3.4": ("ahp", "a6"), "P3.7": ("rembrandt", "a1"),
                     "P3.10": ("fuzzy_ahp", "a1"), "P3.12": ("anp", "a1"), "P3.13": ("anp", "dostawca Y"),
-                    "P3.14": ("fuzzy_anp", "a1"), "P5.10": ("electre_i", "a7, a8"), "P5.11": ("electre_iv", "a7, a8"),
+                    "P3.14": ("fuzzy_anp", "a1"), "P4.2": ("macbeth_scale", "f1 cena lokalu"), "P4.3": ("macbeth", "Samsung Galaxy S3"),
+                    "P4.5": ("zapros", "Wojciech"), "P4.6": ("zapros", "a1, a4"), "P4.8": ("zapros_iii", "K9"),
+                    "P5.10": ("electre_i", "a7, a8"), "P5.11": ("electre_iv", "a7, a8"),
                     "P5.12": ("electre_is", "a7, a8"), "P5.13": ("electre_iii", "a6"), "P5.14": ("electre_iii", "a6"),
                     "P5.15": ("electre_tri", "a1"), "P5.16": ("electre_tri", "a1"), "P5.19": ("electre_i_sd", "a4, a5"),
                     "P5.20": ("electre_iii_sd", "a4"), "P6.2": ("promethee_i", "a5"), "P6.5": ("promethee_ii", "a1"),
@@ -193,6 +195,29 @@ def main():
         out = page.locator("#bk-out").inner_text()
         check("Znormalizowana macierz T grup" in out and "Ranking Q: a8, a10" in out, "Hybryda: T grup i ranking VIKOR")
         shot("bipolar")
+
+        # --- MACBETH i ZAPROS: macierze ocen werbalnych, JOS, JSQV ---
+        page.select_option("#bk-method", "macbeth"); page.select_option("#bk-example", "P4.3"); page.click("#bk-load")
+        check(page.locator("#bk-editor select[data-mm='__w']").count() == 20, "MACBETH: macierz wag z [ all lower ]")
+        page.select_option("#bk-editor select[data-mm='c0'][data-r='0'][data-k='2']", "weak"); page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("niespójne oceny" in out and "Doskonała–Dobra: weak →" in out, "MACBETH: niespójne oceny i sugestia zmiany", out[:300])
+        page.select_option("#bk-editor select[data-mm='c0'][data-r='0'][data-k='2']", "strong"); page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("248,6" in out and "122,2222" in out, "MACBETH: oceny końcowe i skala ciężaru (rys. 14, 16)")
+        page.select_option("#bk-method", "zapros"); page.select_option("#bk-example", "P4.6"); page.click("#bk-load")
+        check(page.locator("#bk-editor select[data-zy]").count() == 42, "ZAPROS: porównania wektorów Y w edytorze")
+        page.select_option("#bk-editor select[data-zap-mode]", "jos"); page.fill("#zap-jos", "A1 B1 C1 | C2 | A2 | B2 | B3 | A3 C3")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("a1 → a2" in out and "(1, 2, 4)" in out, "ZAPROS: JOS wpisana ręcznie, graf porządku")
+        page.select_option("#bk-method", "zapros_iii"); page.select_option("#bk-example", "P4.8"); page.click("#bk-load")
+        page.click("#bk-editor button[data-zap-mode]")
+        check("C1>C2, A1>A2" in page.locator("#zap-jscv").input_value(), "ZAPROS III: tablice wariacji → JSCV")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("K9 → K1" in out and "1. (C1→C2)" in out, "ZAPROS III: rangi i JSCV (przykład 4.8)")
+        shot("macbeth_zapros")
 
         # --- dobór metody ---
         page.click("#sel-box summary")

@@ -732,7 +732,21 @@ const CRIT_FIELDS = {
   electre_i_sd: ["direction", "weight"], electre_iii_sd: ["direction", "weight", "q", "p", "v"],
   dematel: [], hybrid: ["direction", "cluster"], bipolar: ["direction", "weight", "q", "v"],
   bipolar_sd: ["direction", "weight", "q", "p", "v"],
+  macbeth: ["weight"], macbeth_scale: [], zapros: ["grades"], zapros_iii: ["grades"],
 };
+const MAC_FAMILY = new Set(["macbeth", "macbeth_scale"]);
+const ZAP_FAMILY = new Set(["zapros", "zapros_iii"]);
+const MAC_CATS = [["", "—"], ["no", "brak różnicy"], ["very weak", "bardzo mała"], ["weak", "mała"], ["moderate", "umiarkowana"],
+  ["strong", "duża"], ["very strong", "bardzo duża"], ["extreme", "ekstremalna"], ["positive", "dodatnia (nie wiem)"]];
+const MAC_NUM = { 0: "no", 1: "very weak", 2: "weak", 3: "moderate", 4: "strong", 5: "very strong", 6: "extreme" };
+const MAC_PL = { "bardzo mała": "very weak", "mała": "weak", "umiarkowana": "moderate", "duża": "strong", "bardzo duża": "very strong",
+  "ekstremalna": "extreme", "v. strong": "very strong", "v. weak": "very weak", "nie ma różnicy": "no" };
+function macKey(x) {
+  if (x === null || x === undefined || x === "") return "";
+  if (typeof x === "number") return MAC_NUM[x] ?? "";
+  if (Array.isArray(x)) return (x[0] === 1 && x[1] === 6) ? "positive" : JSON.stringify(x);
+  const t = String(x).trim().toLowerCase(); return MAC_PL[t] || t;
+}
 const BIP_FAMILY = new Set(["bipolar", "bipolar_sd"]);
 const INFL_FAMILY = new Set(["dematel", "hybrid"]);
 const PROM_FAMILY = new Set(["promethee_i", "promethee_ii", "promethee_ii_veto", "exprom", "exprom_veto", "promethee_ii_sd", "exprom_ii_sd"]);
@@ -742,7 +756,7 @@ const ALPHA_BETA = (m) => SD_VALUES.has(m) || ELE_FAMILY.has(m);
 const PF_TYPES = [[1, "1 zwykłe"], [2, "2 quasi (q)"], [3, "3 liniowe (p)"], [4, "4 poziomowe (q, p)"], [5, "5 pseudo (q, p)"], [6, "6 gaussowskie (s)"]];
 const FIELD_LABEL = { mandatory: "obowiązkowe", direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
   swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny",
-  type: "typ kryterium", cluster: "grupa (klaster)", q: "próg równoważności q", p: "próg preferencji p", s: "parametr s", v: "próg weta v", L: "granica L (EXPROM)" };
+  type: "typ kryterium", cluster: "grupa (klaster)", grades: "skala ocen (od najlepszej, „|”)", q: "próg równoważności q", p: "próg preferencji p", s: "parametr s", v: "próg weta v", L: "granica L (EXPROM)" };
 const HINTS = {
   saw: "Oceny liczbowe; wagi sumujące się do 1 (inne są normalizowane).",
   scoring: "W macierzy wpisz punkty przyznane wariantom za każde kryterium; „maks. punktów” to część puli P przydzielona kryterium.",
@@ -771,6 +785,10 @@ const HINTS = {
   hybrid: "Oceny liczbowe i kierunki; każde kryterium przypisz do grupy. Pod tabelą macierze wpływu 0–4 między grupami i między kryteriami (DEMATEL). Wagi wyznacza ANP z macierzy granicznej, ranking — VIKOR (Q: im mniej, tym lepiej).",
   bipolar: "Oceny liczbowe, wagi, progi q i weta v (najmniejsza dopuszczalna ocena). Pod tabelą obiekty referencyjne „dobre” (d) i „złe” (z). Wynik: kategorie S, N i bipolarne B oraz ranking (warianty bez kategorii pomijane).",
   bipolar_sd: "Oceny wariantów i obiektów referencyjnych to rozkłady: „wartość:prawd.” albo obserwacje oddzielone spacjami. Progi q, p na wartościach oczekiwanych, weto v — najmniejsza dopuszczalna wartość oczekiwana.",
+  macbeth: "Dla każdego kryterium pod tabelą wybierz sposób oceny: gotowe oceny w skali MACBETH (0 = poziom dolny, 100 = górny), poziomy (jakościowe lub liczbowe — liczby są interpolowane) albo porównanie wariantów. W macierzach wiersz jest bardziej atrakcyjny od kolumny; oceniaj różnicę atrakcyjności (bardzo mała … ekstremalna). Wagi: macierz kryteriów z elementem odniesienia [ all lower ] albo pola „waga”.",
+  macbeth_scale: "Elementy (np. kryteria) jako wiersze; w macierzy oceny różnic atrakcyjności (wiersz lepszy od kolumny). Wynik: skala 0–100 i wagi po normalizacji.",
+  zapros: "Skala ocen kryterium od najlepszej, np. A1 | A2 | A3 (oceny różne między kryteriami). W macierzy wpisz oceny wariantów. Pod tabelą wspólna skala porządkowa JOS albo porównania wektorów Y.",
+  zapros_iii: "Skala ocen kryterium od najlepszej. Pod tabelą wspólna skala wariacji JSCV (od najmniej dotkliwej, np. C1>C2, A1>A2, …) albo JSQV dla par kryteriów — po jednej w wierszu.",
   compromise: "Odległość L1 od rozwiązania idealnego (wzór 9.1). Kryterium obowiązkowe eliminuje wariant, który nie osiąga wartości idealnej.",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
@@ -824,6 +842,7 @@ function bookInit() {
     let name = "f" + (p.criteria.length + 1); while (p.criteria.some((c) => c.name === name)) name += "'";
     if (ANP_FAMILY.has(BK.method)) { if (p.subnets) return; p.criteria.push({ name }); bookRender(); return; }
     p.criteria.push(ahpm ? { name, source: "comparisons" } : { name, direction: "max" }); p.values.forEach((r) => r.push(ahpm ? null : 0)); (p.profiles || []).forEach((r) => r.push(0));
+    if (p.criteria_judgements) { const M = p.criteria_judgements, at = p.criteria.length - 1; M.forEach((r) => r.splice(at, 0, null)); M.splice(at, 0, Array(M.length + 1).fill(null)); M[at][at] = 0; }
     if (ahpm) { p.comparisons = p.comparisons || {}; p.comparisons[name] = blankMatrix(p.variants.length, BK.method);
       if (p.criteria_comparisons) { const M = p.criteria_comparisons; M.forEach((r) => r.push(null)); const row = M.map(() => null); row.push(BK.method === "rembrandt" ? 0 : 1); M.push(row); } }
     bookRender(); });
@@ -896,6 +915,7 @@ function bookRender() {
       let cell;
       if (f === "mandatory") cell = `<input type="checkbox" data-c="mandatory" data-k="${k}"${c.mandatory ? " checked" : ""}>`;
       else if (f === "type") cell = `<select data-c="type" data-k="${k}">${PF_TYPES.map(([v, t]) => opt(String(v), t, Number(c.type || 1) === v)).join("")}</select>`;
+      else if (f === "grades") cell = `<input type="text" data-c="grades" data-k="${k}" value="${esc((c.scale || []).join(" | "))}" style="width:150px">`;
       else if (f === "direction") cell = `<select data-c="direction" data-k="${k}">${opt("max", "max (zysk)", c.direction !== "min")}${opt("min", "min (koszt)", c.direction === "min")}</select>`;
       else if (f === "scale") {
         const s = scaleStr(c.scale);
@@ -931,6 +951,8 @@ function bookRender() {
     }
   }
   h += "</table>";
+  if (MAC_FAMILY.has(m)) h += macHtml();
+  if (ZAP_FAMILY.has(m)) h += zapHtml();
   if (BIP_FAMILY.has(m)) h += `<div style="margin-top:6px"><button class="btn small" data-add-ref="good">+ obiekt „dobry”</button> <button class="btn small" data-add-ref="bad">+ obiekt „zły”</button></div>`;
   if (INFL_FAMILY.has(m)) {
     if (m === "dematel") h += inflHtml("influence", "Macierz wpływu (wiersz → kolumna, 0–4)", p.variants);
@@ -951,6 +973,11 @@ function bookRender() {
     $("bk-editor").querySelectorAll("[data-del-b]").forEach((b) => b.addEventListener("click", () => {
       bookRead(); if (p.profiles.length <= 1) return; p.profiles.splice(+b.dataset.delB, 1); if (p.categories) p.categories.pop(); bookRender(); }));
   }
+  $("bk-editor").querySelectorAll("[data-mac-mode],[data-mac-levels],[data-mac-wmode],[data-mac-ref],[data-zap-mode]").forEach((e) => e.addEventListener("change", () => {
+    try { bookRead(); } catch (err) {} if (e.dataset.macMode !== undefined) macSetMode(+e.dataset.macMode, e.value);
+    if (e.dataset.macWmode !== undefined) macSetWeights(e.value); if (e.dataset.macRef !== undefined) macSetRef(e.checked);
+    if (e.dataset.zapMode !== undefined) zapSetMode(e.value); bookRender(); }));
+  $("bk-editor").querySelectorAll("button[data-zap-mode]").forEach((b) => b.addEventListener("click", () => { try { bookRead(); } catch (err) {} zapSetMode("jsqv"); bookRender(); }));
   $("bk-editor").querySelectorAll("[data-add-ref]").forEach((b) => b.addEventListener("click", () => {
     bookRead(); const key = b.dataset.addRef; p[key].push(p[key][p[key].length - 1].slice()); bookRender(); }));
   $("bk-editor").querySelectorAll("[data-del-ref]").forEach((b) => b.addEventListener("click", () => {
@@ -961,11 +988,128 @@ function bookRender() {
   $("bk-editor").querySelectorAll("[data-del-c]").forEach((b) => b.addEventListener("click", () => {
     bookRead(); const k = +b.dataset.delC; if (p.criteria.length <= 1) return;
     p.criteria.splice(k, 1); p.values.forEach((r) => r.splice(k, 1)); [p.profiles, p.good, p.bad].forEach((R) => (R || []).forEach((r) => r.splice(k, 1)));
-    inflSplice(p, "criteria_influence", k); bookRender(); }));
+    inflSplice(p, "criteria_influence", k); inflSplice(p, "criteria_judgements", k); bookRender(); }));
   $("bk-editor").querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
     bookRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
-    p.variants.splice(i, 1); p.values.splice(i, 1); inflSplice(p, "influence", i); bookRender(); }));
+    p.variants.splice(i, 1); p.values.splice(i, 1); inflSplice(p, "influence", i); inflSplice(p, "judgements", i);
+    p.criteria.forEach((c) => { if (c.macbeth && !c.macbeth.levels) { const M = c.macbeth.judgements; if (M.length > i) { M.splice(i, 1); M.forEach((r) => r.splice(i, 1)); } } });
+    bookRender(); }));
   bookRenderOptions();
+}
+
+function parseMixed(s) {
+  s = s.trim(); if (!s) return null;
+  try { const v = parseNumbers(s); if (v.length === 1) return v[0]; } catch (e) {}
+  return s;
+}
+function macMatrixHtml(key, labels, M) {
+  const n = labels.length;
+  return `<div class="tablewrap"><table data-macm="${esc(key)}"><thead><tr><th class="l small">lepszy \\ gorszy</th>` + labels.map((l) => `<th class="small">${esc(l)}</th>`).join("") + "</tr></thead><tbody>" +
+    labels.map((l, i) => `<tr><td class="l small">${esc(l)}</td>` + labels.map((_, j) => {
+      if (i === j) return `<td class="c muted small">—</td>`;
+      const cur = macKey(M && M[i] ? M[i][j] : null), known = MAC_CATS.some(([v]) => v === cur);
+      return `<td><select data-mm="${esc(key)}" data-r="${i}" data-k="${j}" class="small">` + MAC_CATS.map(([v, t]) => opt(v, t, v === cur)).join("") +
+        (known ? "" : opt(cur, cur, true)) + "</select></td>"; }).join("") + "</tr>").join("") + "</tbody></table></div>";
+}
+function macLevels(c) { return (c.macbeth && c.macbeth.levels) || null; }
+function macHtml() {
+  const p = BK.problem, m = BK.method;
+  if (m === "macbeth_scale") return `<div class="small" style="margin-top:10px"><b>Oceny różnic atrakcyjności</b></div>` + macMatrixHtml("__single", p.variants, p.judgements || []);
+  let h = "";
+  p.criteria.forEach((c, k) => {
+    const mode = !c.macbeth ? "direct" : (c.macbeth.levels ? "levels" : "variants");
+    h += `<div style="margin-top:12px"><b>${esc(c.name)}</b> <select data-mac-mode="${k}" class="small">${opt("direct", "gotowe oceny w skali MACBETH", mode === "direct")}${opt("levels", "poziomy (jakościowe / liczbowe)", mode === "levels")}${opt("variants", "porównanie wariantów", mode === "variants")}</select>`;
+    if (mode !== "direct") {
+      const labels = mode === "levels" ? c.macbeth.levels.map(String) : p.variants;
+      if (mode === "levels") h += ` <label class="small">poziomy od najlepszego (|): <input type="text" data-mac-levels="${k}" value="${esc(c.macbeth.levels.map((x) => typeof x === "number" ? numStr(x) : x).join(" | "))}" style="width:260px"></label>`;
+      const ref = (key, lab) => `<label class="small"> ${lab}: <select data-mac-${key}="${k}">${opt("", "—", c.macbeth[key] === undefined)}${labels.map((l) => opt(l, l, String(c.macbeth[key]) === l)).join("")}</select></label>`;
+      h += ref("upper", "100 =") + ref("lower", "0 =");
+      h += macMatrixHtml("c" + k, labels, c.macbeth.judgements || []);
+    }
+    h += "</div>";
+  });
+  const wm = p.criteria_judgements ? "matrix" : "weights";
+  h += `<div style="margin-top:14px"><b>Wagi kryteriów</b> <select data-mac-wmode="1" class="small">${opt("weights", "podane w polu „waga”", wm === "weights")}${opt("matrix", "z macierzy ocen MACBETH", wm === "matrix")}</select>`;
+  if (wm === "matrix") {
+    const hasRef = p.criteria_judgements.length === p.criteria.length + 1;
+    h += ` <label class="small"><input type="checkbox" data-mac-ref="1"${hasRef ? " checked" : ""}> element odniesienia [ all lower ]</label>`;
+    h += macMatrixHtml("__w", p.criteria.map((c) => c.name).concat(hasRef ? [p.criteria_reference || "[ all lower ]"] : []), p.criteria_judgements);
+  }
+  return h + "</div>";
+}
+function macSetMode(k, mode) {
+  const c = BK.problem.criteria[k];
+  if (mode === "direct") delete c.macbeth;
+  else if (mode === "levels") { const col = BK.problem.values.map((r) => r[k]).filter((x) => x !== null && x !== undefined);
+    const lv = [...new Set(col)]; c.macbeth = { levels: lv.length >= 2 ? lv : ["dobry", "zły"], judgements: [] }; }
+  else c.macbeth = { judgements: [] };
+}
+function macSetWeights(mode) { const p = BK.problem; if (mode === "weights") delete p.criteria_judgements; else p.criteria_judgements = p.criteria.map(() => p.criteria.map(() => null)); }
+function macSetRef(on) {
+  const M = BK.problem.criteria_judgements, n = BK.problem.criteria.length;
+  if (on && M.length === n) { M.forEach((r) => r.push(null)); M.push(Array(n + 1).fill(null)); }
+  if (!on && M.length === n + 1) { M.pop(); M.forEach((r) => r.pop()); }
+}
+function macRead() {
+  const p = BK.problem, ed = $("bk-editor");
+  const target = (key) => key === "__single" ? (p.judgements = p.judgements || []) : key === "__w" ? p.criteria_judgements : (p.criteria[+key.slice(1)].macbeth.judgements);
+  const sized = {};
+  ed.querySelectorAll("select[data-mm]").forEach((e) => {
+    const key = e.dataset.mm, tb = ed.querySelector(`table[data-macm="${key}"]`), n = tb.querySelectorAll("tbody tr").length;
+    if (!sized[key]) { const M = target(key); const fresh = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? 0 : null));
+      M.length = 0; fresh.forEach((r) => M.push(r)); sized[key] = true; }
+    let v = e.value; if (v.startsWith("[")) v = JSON.parse(v);
+    target(key)[+e.dataset.r][+e.dataset.k] = v === "" ? null : v;
+  });
+  ed.querySelectorAll("[data-mac-levels]").forEach((e) => {
+    const c = p.criteria[+e.dataset.macLevels], lv = e.value.split("|").map((x) => x.trim()).filter(Boolean).map((x) => parseMixed(x));
+    if (lv.length < 2) throw new Error(`${c.name}: podaj co najmniej dwa poziomy`);
+    if (lv.length !== c.macbeth.levels.length) c.macbeth.judgements = [];
+    c.macbeth.levels = lv; });
+  for (const key of ["upper", "lower"]) ed.querySelectorAll(`[data-mac-${key}]`).forEach((e) => {
+    const c = p.criteria[+e.getAttribute(`data-mac-${key}`)]; if (!c.macbeth) return;
+    if (e.value === "") delete c.macbeth[key]; else { const lv = (c.macbeth.levels || p.variants); const hit = lv.find((x) => String(x) === e.value); c.macbeth[key] = hit === undefined ? e.value : hit; } });
+}
+function zapY(p) { const sc = p.criteria.map((c) => c.scale || []); return [sc.map((x) => x[0]).join("+")].concat(sc.flatMap((x) => x.slice(1))); }
+function zapHtml() {
+  const p = BK.problem, m = BK.method;
+  let h = "";
+  if (m === "zapros") {
+    const mode = p.y_comparisons ? "y" : "jos";
+    h += `<div style="margin-top:12px"><b>Wspólna skala porządkowa</b> <select data-zap-mode="1" class="small">${opt("jos", "rangi JOS", mode === "jos")}${opt("y", "porównania wektorów Y", mode === "y")}</select></div>`;
+    if (mode === "jos") {
+      const jos = p.jos || []; const groups = Array.isArray(jos) ? jos.map((g) => Array.isArray(g) ? g.join(" ") : g) :
+        Object.entries(jos).reduce((a, [g, r]) => { (a[r - 1] = a[r - 1] || []).push(g); return a; }, []).map((g) => (g || []).join(" "));
+      h += `<label class="small">Grupy ocen od rangi 1 (oddzielone „|”): <input type="text" id="zap-jos" value="${esc(groups.join(" | "))}" style="width:520px"></label>`;
+    } else {
+      const Y = zapY(p), M = p.y_comparisons;
+      h += `<div class="small muted">Wektory Y: najlepszy (${esc(Y[0])}) i po jednej gorszej ocenie przy pozostałych najlepszych. P — wiersz bardziej atrakcyjny, I — równoważne.</div><div class="tablewrap"><table><thead><tr><th></th>` +
+        Y.map((y) => `<th class="small">${esc(y)}</th>`).join("") + "</tr></thead><tbody>" + Y.map((y, i) => `<tr><td class="l small">${esc(y)}</td>` +
+        Y.map((_, j) => i === j ? `<td class="c muted small">I</td>` : `<td><select data-zy="${i}" data-k="${j}" class="small">${[["", "—"], ["P", "P"], ["I", "I"]].map(([v, t]) => opt(v, t, ((M[i] || [])[j] || "") === v)).join("")}</select></td>`).join("") + "</tr>").join("") + "</tbody></table></div>";
+    }
+  } else {
+    if (p.qv_comparisons) return h + `<div style="margin-top:12px" class="small"><b>Porównania wariacji:</b> ${p.qv_comparisons.length} tablic (edycja w JSON). <button class="btn small" data-zap-mode="jsqv" type="button">zamień na JSQV</button></div>`;
+    const mode = p.jsqv ? "jsqv" : "jscv";
+    h += `<div style="margin-top:12px"><b>Wariacje jakościowe</b> <select data-zap-mode="1" class="small">${opt("jscv", "JSCV (wspólna skala)", mode === "jscv")}${opt("jsqv", "JSQV dla par kryteriów", mode === "jsqv")}</select></div>`;
+    if (mode === "jscv") h += `<label class="small">Od najmniej dotkliwej: <input type="text" id="zap-jscv" value="${esc((p.jscv || []).join(", "))}" placeholder="C1>C2, A1>A2, …" style="width:520px"></label>`;
+    else h += `<div class="small">Jedna skala w wierszu (od najmniej dotkliwej):</div><textarea id="zap-jsqv" rows="4" style="width:560px">${esc((p.jsqv || []).map((ch) => ch.join(", ")).join("\n"))}</textarea>`;
+  }
+  return h;
+}
+function zapSetMode(mode) {
+  const p = BK.problem;
+  if (BK.method === "zapros") { if (mode === "y") { const n = zapY(p).length; p.y_comparisons = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? "I" : null)); delete p.jos; } else { delete p.y_comparisons; p.jos = p.jos || []; } return; }
+  if (mode === "jsqv") { if (p.qv_comparisons) { try { const r = call("book_run", JSON.stringify({ method: "zapros_iii", problem: p, options: {} })); if (!r.error) p.jscv = r.steps.jscv; } catch (e) {} delete p.qv_comparisons; delete p.jsqv; if (!p.jscv) p.jsqv = []; } else { p.jsqv = p.jsqv || [p.jscv || []]; delete p.jscv; } }
+  else { delete p.jsqv; delete p.qv_comparisons; p.jscv = p.jscv || []; }
+}
+function zapRead() {
+  const p = BK.problem, ed = $("bk-editor"), split = (s) => s.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
+  if ($("zap-jos")) p.jos = $("zap-jos").value.split("|").map((g) => g.trim().split(/\s+/).filter(Boolean)).filter((g) => g.length);
+  if ($("zap-jscv")) p.jscv = split($("zap-jscv").value);
+  if ($("zap-jsqv")) p.jsqv = $("zap-jsqv").value.split("\n").map(split).filter((ch) => ch.length);
+  if (ed.querySelector("select[data-zy]")) { const n = zapY(p).length, M = p.y_comparisons || [];
+    p.y_comparisons = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? "I" : ((M[i] || [])[j] ?? null))); }
+  ed.querySelectorAll("select[data-zy]").forEach((e) => { p.y_comparisons[+e.dataset.zy][+e.dataset.k] = e.value || null; });
 }
 
 function hybridClusters(p) {
@@ -1095,7 +1239,9 @@ function bookRead() {
   if (AHP_FAMILY.has(m)) { ahpRead(); BK.options = bookReadOptions(); return; }
   if (ANP_FAMILY.has(m)) { anpRead(); BK.options = bookReadOptions(); return; }
   ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
-  ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = SD_VALUES.has(m) ? parseDistCell(e.value) : parseCell(e.value); });
+  ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = SD_VALUES.has(m) ? parseDistCell(e.value) :
+    (MAC_FAMILY.has(m) || ZAP_FAMILY.has(m)) ? parseMixed(e.value) : parseCell(e.value); });
+  if (MAC_FAMILY.has(m)) macRead(); if (ZAP_FAMILY.has(m)) zapRead();
   ed.querySelectorAll("[data-b]").forEach((e) => { p.profiles[+e.dataset.b][+e.dataset.k] = parseNum(e.value); });
   ed.querySelectorAll("[data-ref]").forEach((e) => { p[e.dataset.ref][+e.dataset.r][+e.dataset.k] = SD_VALUES.has(m) ? parseDistCell(e.value) : parseNum(e.value); });
   ed.querySelectorAll("[data-mx]").forEach((e) => { const s = e.value.trim(); p[e.dataset.mx][+e.dataset.r][+e.dataset.k] = s === "" ? 0 : parseNum(s); });
@@ -1106,6 +1252,7 @@ function bookRead() {
     if (f === "mandatory") { if (e.checked) c.mandatory = true; else delete c.mandatory; }
     else if (f === "name") c.name = s;
     else if (f === "cluster") { if (s) c.cluster = s; else delete c.cluster; }
+    else if (f === "grades") { c.scale = s.split("|").map((x) => x.trim()).filter(Boolean); }
     else if (f === "direction") c.direction = s;
     else if (f === "type") { if (s === "1") delete c.type; else c.type = Number(s); }
     else if (["q", "p", "s", "v", "L"].includes(f)) { if (s === "") delete c[f]; else { const v = parseNumbers(s); if (v.length === 2 && ALPHA_BETA(m)) c[f] = v; else if (v.length === 1) c[f] = v[0]; else throw new Error(`${c.name}: ${FIELD_LABEL[f]} — jedna liczba` + (ALPHA_BETA(m) ? " albo α; β" : "")); } }
@@ -1176,6 +1323,7 @@ function bookRun() {
   h += `<div class="tablewrap">` + table(["Ranga", "Wariant", r.scores.label],
     order.map((i) => [String(r.ranks[i]), V[i], fmt(r.scores.values[i])]), { raw: true,
       cellClass: (i, j) => (j === 1 ? "l" : "") + (r.best.includes(V[order[i]]) ? " hl" : "") }) + "</div>";
+  if (MAC_FAMILY.has(r.method) || ZAP_FAMILY.has(r.method)) { h += macZapResultHtml(r, st, V, C); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (BIP_FAMILY.has(r.method) || r.method === "dematel") { h += bipResultHtml(r, st, V, C); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (r.method === "hybrid") {
     const G = st.clusters || [];
@@ -1681,6 +1829,34 @@ function promResultHtml(r, st, V, C) {
   return h;
 }
 // ---------- ELECTRE (rozdz. 5) ----------
+function macZapResultHtml(r, st, V, C) {
+  let h = "";
+  for (const n of r.notes) h += note(n, "warn");
+  if (r.method === "macbeth_scale") {
+    h += `<div class="tablewrap">` + table(["Element", "skala podstawowa", "skala 0–100", "waga"], V.map((v, i) => [v, fmt(st.basic[i]), fmt(r.scores.values[i]), st.weights ? fmt(st.weights[i]) : "—"]), { raw: true }) + "</div>";
+    return h;
+  }
+  if (r.method === "macbeth") {
+    h += "<h3>Oceny cząstkowe</h3><div class=\"tablewrap\">" + table(["Wariant", ...C, "ocena końcowa"], V.map((v, i) => [v, ...st.partial_scores[i].map((x) => fmt(x)), fmt(r.scores.values[i])]), { raw: true }) + "</div>";
+    h += `<div class="small"><b>Wagi</b></div><div class="tablewrap">` + table(["", ...C], [["", ...st.weights.map((x) => fmt(x))]], { raw: true }) + "</div>";
+    for (const [name, sc] of Object.entries(st.scales)) {
+      h += `<div class="small" style="margin-top:6px"><b>${name === "weights" ? "Wagi kryteriów" : "Kryterium " + esc(name)}</b> — 100 = ${esc(sc.upper)}, 0 = ${esc(sc.lower)}${sc.interpolation ? " (interpolacja odcinkowo liniowa)" : ""}</div>`;
+      h += `<div class="tablewrap">` + table(["", ...sc.elements], [["skala podstawowa", ...sc.basic.map((x) => fmt(x))], ["skala MACBETH", ...sc.scale.map((x) => fmt(x))]], { raw: true }) + "</div>";
+    }
+    return h;
+  }
+  const head = r.method === "zapros" ? ["Wariant", "oceny", "rangi JOS (rosnąco)", "ranga"] : ["Wariant", "oceny", "FIQ", "ranga"];
+  h += "<h3>Porządek częściowy</h3><div class=\"tablewrap\">" + table(head, V.map((v, i) => [v, BK.problem.values[i].join(", "),
+    r.method === "zapros" ? "(" + st.jos_sorted[i].join(", ") + ")" : String(st.FIQ[i]),
+    st.rank_high[i] > st.rank_low[i] ? `${st.rank_low[i]}–${st.rank_high[i]}` : String(st.rank_low[i])]), { raw: true }) + "</div>";
+  h += `<div class="small"><b>Relacje</b> (P — wiersz lepszy, P- — gorszy, I — równoważne, R — nieporównywalne)</div><div class="tablewrap">` +
+    table(["", ...V], st.relations.map((row, i) => [V[i], ...row]), { raw: true }) + "</div>";
+  h += `<div class="small"><b>Graf (diagram Hassego):</b> ${st.edges.map(([a, b]) => `${esc(a)} → ${esc(b)}`).join(", ") || "brak"}</div>`;
+  if (st.jscv) h += `<div class="small"><b>JSCV:</b> ${st.jscv.map((q, i) => `${i + 1}. (${esc(q.replace(">", "→"))})`).join(" ")}</div>`;
+  if (st.jos) h += `<div class="small"><b>JOS:</b> ${Object.entries(st.jos).sort((a, b) => a[1] - b[1]).map(([g, rk]) => `${esc(g)} ${rk}`).join(", ")}</div>`;
+  return h;
+}
+
 function bipResultHtml(r, st, V, C) {
   let h = "";
   for (const n of r.notes) h += note(n, "warn");
