@@ -6,7 +6,7 @@ select(profile) — buduje zadanie typu Gershona: warianty = metody pakietu, kry
                   (obowiązkowe: rodzaj danych, wymagana postać wyniku; punktowane 0–10 z wagami
                   wynikającymi z profilu) i rozwiązuje je przez compromise.
 
-Oceny metod w katalogu METHOD_PROFILES: dla SAW, SMART i TOPSIS oparte na zbiorze R9.2 (D. Górecka),
+Oceny metod w katalogu METHOD_PROFILES: dla SAW, SMART, TOPSIS (i częściowo ELECTRE III, PROMETHEE II, EXPROM II) oparte na zbiorze R9.2 (D. Górecka),
 dla pozostałych — oceny własne autora pakietu przez analogię; można je nadpisać (opcja `scores`).
 """
 from __future__ import annotations
@@ -136,6 +136,29 @@ METHOD_PROFILES: Dict[str, Dict[str, Any]] = {
                   "elicit": {"pairwise"},
                   "grades": {"transparency": 2, "knowledge": 2, "effort": 2, "noncomp": 2, "uncertainty": 7, "consistency": 6},
                   "source": "własne"},
+    "electre_i": {"title": "ELECTRE I (5.2)", "caps": {"numeric"}, "elicit": {"weights"},
+                  "grades": {"transparency": 4, "knowledge": 6, "effort": 6, "noncomp": 9, "uncertainty": 1, "consistency": 4},
+                  "source": "własne (analogia do R9.2: ELECTRE III)"},
+    "electre_iv": {"title": "ELECTRE Iv (5.2)", "caps": {"numeric"}, "elicit": {"weights"},
+                   "grades": {"transparency": 4, "knowledge": 6, "effort": 6, "noncomp": 10, "uncertainty": 1, "consistency": 4},
+                   "source": "własne (analogia do R9.2: ELECTRE III)"},
+    "electre_is": {"title": "ELECTRE Is (5.2)", "caps": {"numeric"}, "elicit": {"weights"},
+                   "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 10, "uncertainty": 4, "consistency": 4},
+                   "source": "własne (analogia do R9.2: ELECTRE III)"},
+    "electre_iii": {"title": "ELECTRE III (5.3)", "caps": {"numeric"}, "elicit": {"weights"},
+                    "grades": {"transparency": 2, "knowledge": 6, "effort": 6, "noncomp": 10, "uncertainty": 4, "consistency": 4},
+                    "source": "R9.2 (transparency, knowledge, effort; brak kompletnego rankingu); pozostałe własne"},
+    "electre_tri": {"title": "ELECTRE TRI (5.4)", "caps": {"numeric", "sorting"}, "elicit": {"weights"},
+                    "grades": {"transparency": 3, "knowledge": 6, "effort": 5, "noncomp": 10, "uncertainty": 4, "consistency": 4},
+                    "source": "własne (analogia do R9.2: ELECTRE III)"},
+    "electre_i_sd": {"title": "ELECTRE I z dominacjami stochastycznymi (5.5)", "caps": {"stochastic"},
+                     "elicit": {"weights"},
+                     "grades": {"transparency": 3, "knowledge": 3, "effort": 4, "noncomp": 9, "uncertainty": 10, "consistency": 4},
+                     "source": "własne"},
+    "electre_iii_sd": {"title": "ELECTRE III z dominacjami stochastycznymi (5.6)", "caps": {"stochastic"},
+                       "elicit": {"weights"},
+                       "grades": {"transparency": 2, "knowledge": 3, "effort": 5, "noncomp": 10, "uncertainty": 10, "consistency": 5},
+                       "source": "własne (analogia do R9.2: ELECTRE III)"},
     "promethee_i": {"title": "PROMETHEE I (6.2)", "caps": {"numeric"}, "elicit": {"weights"},
                     "grades": {"transparency": 3, "knowledge": 6, "effort": 6, "noncomp": 6, "uncertainty": 3, "consistency": 4},
                     "source": "R9.2 (PROMETHEE II: transparency, knowledge, effort); pozostałe własne"},
@@ -200,8 +223,8 @@ PROFILE_FIELDS = {
     "data": "rodzaje ocen: lista z numeric, qualitative, fuzzy, stochastic (wymagane)",
     "preferences": "co decydent potrafi podać: lista z weights, swing, ranks, pairwise, fuzzy_weights, points, dialog "
                    "(domyślnie [\"weights\"])",
-    "output": "best | ranking | scores — wystarczy najlepszy wariant, potrzebny pełny ranking albo wynik liczbowy "
-              "(domyślnie ranking)",
+    "output": "best | ranking | scores | sort — wystarczy najlepszy wariant, potrzebny pełny ranking, wynik liczbowy "
+              "albo przypisanie do uporządkowanych kategorii (domyślnie ranking)",
     "compensation": "full | limited — czy dobra ocena może zrównoważyć słabą (domyślnie full)",
     "reference_levels": "true, gdy decydent zna poziomy aspiracji / rezerwacji (domyślnie false)",
     "explain": "low | medium | high — jak ważne jest wyjaśnienie wyniku innym (domyślnie medium)",
@@ -234,8 +257,8 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
     prefs = profile.get("preferences") or ["weights"]
     prefs = {prefs} if isinstance(prefs, str) else set(prefs)
     output = profile.get("output", "ranking")
-    if output not in ("best", "ranking", "scores"):
-        raise ProblemError("profil.output: best, ranking albo scores")
+    if output not in ("best", "ranking", "scores", "sort"):
+        raise ProblemError("profil.output: best, ranking, scores albo sort")
     comp = profile.get("compensation", "full")
     if comp not in ("full", "limited"):
         raise ProblemError("profil.compensation: full albo limited")
@@ -274,6 +297,12 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
     if "stochastic" not in data:
         mandatory("dane deterministyczne", lambda c: "numeric" in c["caps"],
                   "wymaga ocen w postaci rozkładów prawdopodobieństwa")
+    if output == "sort":
+        mandatory("sortowanie do kategorii", lambda c: "sorting" in c["caps"],
+                  "nie przypisuje wariantów do kategorii")
+    else:
+        mandatory("wybór / porządkowanie", lambda c: "sorting" not in c["caps"],
+                  "przypisuje warianty do kategorii, nie wybiera ani nie porządkuje")
     if output in ("ranking", "scores"):
         mandatory("pełny ranking", lambda c: "ranking" in c["caps"], "nie daje pełnego rankingu wariantów")
     if profile.get("interdependence"):
@@ -327,7 +356,7 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
     res["titles"] = {mth: cat[mth]["title"] for mth in names}
     res["grade_sources"] = {mth: cat[mth]["source"] for mth in names}
     res["elimination_reasons"] = {m: reasons[m] for m in names if m in reasons}
-    res["notes"].append("Oceny metod: SAW, SMART, TOPSIS, PROMETHEE II i EXPROM II (częściowo) na podstawie zbioru R9.2 "
+    res["notes"].append("Oceny metod: SAW, SMART, TOPSIS, ELECTRE III, PROMETHEE II i EXPROM II (częściowo) na podstawie zbioru R9.2 "
                         "(D. Górecka); pozostałe — "
                         "oceny własne autora pakietu; można je nadpisać opcją scores.")
     top = res["ranking"][:2]

@@ -97,7 +97,7 @@
 </header>
 
 <nav id="tabs">
-  <button data-tab="rank" class="active">Ranking (rozdz. 2, 3, 7)</button>
+  <button data-tab="rank" class="active">Ranking (rozdz. 2, 3, 5–7)</button>
   <button data-tab="dane">Dane (.mcf)</button>
   <button data-tab="dom">Wykryte dominacje</button>
   <button data-tab="stdom">Dominacje stochastyczne (StDom)</button>
@@ -110,7 +110,7 @@
   <!-- METODY ROZDZ. 2 I 7 -->
   <section id="tab-rank" class="active">
     <div class="card">
-      <h2>Ranking wariantów: metody addytywne (rozdz. 2), AHP i pokrewne (rozdz. 3), punkty referencyjne (rozdz. 7)</h2>
+      <h2>Ranking wariantów: metody addytywne (rozdz. 2), AHP i pokrewne (rozdz. 3), ELECTRE (rozdz. 5), PROMETHEE (rozdz. 6), punkty referencyjne (rozdz. 7)</h2>
       <div class="row">
         <label>Metoda: <select id="bk-method"></select></label>
         <label>Przykład z książki: <select id="bk-example"></select></label>
@@ -137,7 +137,7 @@
             <label><input type="checkbox" name="sel-pref" value="points"> punkty</label><br>
             <label><input type="checkbox" name="sel-pref" value="dialog"> odpowiedzi w dialogu</label></div>
           <div><b>Wymagania</b><br>
-            <label>Wynik: <select id="sel-output"><option value="ranking">pełny ranking</option><option value="scores">wynik liczbowy</option><option value="best">najlepszy wariant</option></select></label><br>
+            <label>Wynik: <select id="sel-output"><option value="ranking">pełny ranking</option><option value="scores">wynik liczbowy</option><option value="best">najlepszy wariant</option><option value="sort">przypisanie do kategorii</option></select></label><br>
             <label>Kompensacja: <select id="sel-comp"><option value="full">pełna</option><option value="limited">ograniczona</option></select></label><br>
             <label><input type="checkbox" id="sel-ref"> znane poziomy aspiracji / rezerwacji</label><br>
             <label><input type="checkbox" id="sel-dep"> kryteria wpływają na siebie (zależności)</label><br>
@@ -727,9 +727,14 @@ const CRIT_FIELDS = {
   exprom: ["direction", "weight", "type", "q", "p", "s", "L"],
   promethee_ii_veto: ["direction", "weight", "q", "p", "v"], exprom_veto: ["direction", "weight", "q", "p", "v"],
   promethee_ii_sd: ["direction", "weight", "q", "p", "v"], exprom_ii_sd: ["direction", "weight", "q", "p", "v"],
+  electre_i: ["direction", "weight"], electre_iv: ["direction", "weight", "v"], electre_is: ["direction", "weight", "q", "p", "v"],
+  electre_iii: ["direction", "weight", "q", "p", "v"], electre_tri: ["direction", "weight", "q", "p", "v"],
+  electre_i_sd: ["direction", "weight"], electre_iii_sd: ["direction", "weight", "q", "p", "v"],
 };
 const PROM_FAMILY = new Set(["promethee_i", "promethee_ii", "promethee_ii_veto", "exprom", "exprom_veto", "promethee_ii_sd", "exprom_ii_sd"]);
-const SD_VALUES = new Set(["promethee_ii_sd", "exprom_ii_sd"]);
+const SD_VALUES = new Set(["promethee_ii_sd", "exprom_ii_sd", "electre_i_sd", "electre_iii_sd"]);
+const ELE_FAMILY = new Set(["electre_i", "electre_iv", "electre_is", "electre_iii", "electre_tri", "electre_i_sd", "electre_iii_sd"]);
+const ALPHA_BETA = (m) => SD_VALUES.has(m) || ELE_FAMILY.has(m);
 const PF_TYPES = [[1, "1 zwykłe"], [2, "2 quasi (q)"], [3, "3 liniowe (p)"], [4, "4 poziomowe (q, p)"], [5, "5 pseudo (q, p)"], [6, "6 gaussowskie (s)"]];
 const FIELD_LABEL = { mandatory: "obowiązkowe", direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
   swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny",
@@ -751,6 +756,13 @@ const HINTS = {
   exprom_veto: "Progi q ≤ p < v dla każdego kryterium; weto v wyklucza przewyższanie.",
   promethee_ii_sd: "Ocena to rozkład: „wartość:prawd.” (np. 0:0,6 1:0,24 2:0,16) albo obserwacje oddzielone spacjami (np. oceny osób: 1 8 2). Progi: liczba albo α; β (próg = α + β·μ).",
   exprom_ii_sd: "Ocena to rozkład: „wartość:prawd.” (np. 0:0,6 1:0,24 2:0,16) albo obserwacje oddzielone spacjami (np. oceny osób: 1 8 2). Progi: liczba albo α; β (próg = α + β·μ).",
+  electre_i: "Oceny na wspólnej skali (np. punkty); próg zgodności s i wspólny próg weta v w opcjach. Wynik: graf przewyższania i jego poziomy.",
+  electre_iv: "Progi weta v dla kryteriów: liczba albo α; β (próg = α·f + β). Wynik: graf przewyższania i jego poziomy.",
+  electre_is: "Pseudokryteria: progi q ≤ p (brak p: p = q) i weto v; liczba albo α; β (α·f + β).",
+  electre_iii: "Progi q ≤ p < v (liczba albo α; β = α·f + β, wzór 5.39). Wynik: destylacja zstępująca i wstępująca, ranking końcowy (poziom; mniej = lepiej).",
+  electre_tri: "Profile graniczne b¹, b², … od najniższego (wiersze pod tabelą) rozdzielają kategorie nazwane od najgorszej. Progi q, p, v liczone dla profilu.",
+  electre_i_sd: "Ocena to rozkład: „wartość:prawd.” albo obserwacje oddzielone spacjami. Zaczynaj od s = 1 i obniżaj, dopóki s > 0,5.",
+  electre_iii_sd: "Ocena to rozkład: „wartość:prawd.” albo obserwacje. Progi p, v (opcjonalnie q): liczba albo α; β (próg = α·μ + β, wzór 5.39).",
   compromise: "Odległość L1 od rozwiązania idealnego (wzór 9.1). Kryterium obowiązkowe eliminuje wariant, który nie osiąga wartości idealnej.",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
@@ -803,7 +815,7 @@ function bookInit() {
   $("bk-add-crit").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
     let name = "f" + (p.criteria.length + 1); while (p.criteria.some((c) => c.name === name)) name += "'";
     if (ANP_FAMILY.has(BK.method)) { if (p.subnets) return; p.criteria.push({ name }); bookRender(); return; }
-    p.criteria.push(ahpm ? { name, source: "comparisons" } : { name, direction: "max" }); p.values.forEach((r) => r.push(ahpm ? null : 0));
+    p.criteria.push(ahpm ? { name, source: "comparisons" } : { name, direction: "max" }); p.values.forEach((r) => r.push(ahpm ? null : 0)); (p.profiles || []).forEach((r) => r.push(0));
     if (ahpm) { p.comparisons = p.comparisons || {}; p.comparisons[name] = blankMatrix(p.variants.length, BK.method);
       if (p.criteria_comparisons) { const M = p.criteria_comparisons; M.forEach((r) => r.push(null)); const row = M.map(() => null); row.push(BK.method === "rembrandt" ? 0 : 1); M.push(row); } }
     bookRender(); });
@@ -895,13 +907,31 @@ function bookRender() {
       ` <button class="btn small" data-del-v="${i}" title="Usuń wariant" style="padding:1px 6px">×</button></td>` +
       p.criteria.map((_, k) => `<td><input type="text" data-i="${i}" data-k="${k}" value="${esc(cellStr(p.values[i][k]))}" style="width:${FUZZY_VALUES.has(m) ? 110 : SD_VALUES.has(m) ? 170 : 80}px;text-align:right"></td>`).join("") + "</tr>";
   });
-  h += "</tbody></table>";
+  h += "</tbody>";
+  if (m === "electre_tri") {
+    if (!Array.isArray(p.profiles) || !p.profiles.length) p.profiles = [p.criteria.map((_, k) => { const col = p.values.map((r) => Number(r[k]) || 0); return (Math.min(...col) + Math.max(...col)) / 2; })];
+    h += `<tbody class="profiles">` + p.profiles.map((b, h2) => `<tr><td class="l small"><b>profil b${h2 + 1}</b>` +
+      ` <button class="btn small" data-del-b="${h2}" title="Usuń profil" style="padding:1px 6px">×</button></td>` +
+      p.criteria.map((_, k) => `<td><input type="text" data-b="${h2}" data-k="${k}" value="${esc(numStr(b[k]))}" style="width:80px;text-align:right"></td>`).join("") + "</tr>").join("") + "</tbody>";
+  }
+  h += "</table>";
+  if (m === "electre_tri") {
+    const cats = p.categories || Array.from({ length: p.profiles.length + 1 }, (_, i) => "C" + (i + 1));
+    h += `<div style="margin-top:6px"><button class="btn small" id="bk-add-prof">+ profil</button> ` +
+      `<label class="small">Kategorie od najgorszej (rozdzielone „|”): <input type="text" id="bk-cats" value="${esc(cats.join(" | "))}" style="width:300px"></label></div>`;
+  }
   $("bk-editor").innerHTML = h;
+  if (m === "electre_tri") {
+    $("bk-add-prof").addEventListener("click", () => { bookRead(); const last = p.profiles[p.profiles.length - 1];
+      p.profiles.push(last.slice()); if (p.categories) p.categories.push("C" + (p.categories.length + 1)); bookRender(); });
+    $("bk-editor").querySelectorAll("[data-del-b]").forEach((b) => b.addEventListener("click", () => {
+      bookRead(); if (p.profiles.length <= 1) return; p.profiles.splice(+b.dataset.delB, 1); if (p.categories) p.categories.pop(); bookRender(); }));
+  }
   $("bk-editor").querySelectorAll("[data-c=scale_type]").forEach((e) => e.addEventListener("change", () => {
     const c = p.criteria[+e.dataset.k]; try { bookRead(); } catch (err) {} c.scale = { type: e.value }; bookRender(); }));
   $("bk-editor").querySelectorAll("[data-del-c]").forEach((b) => b.addEventListener("click", () => {
     bookRead(); const k = +b.dataset.delC; if (p.criteria.length <= 1) return;
-    p.criteria.splice(k, 1); p.values.forEach((r) => r.splice(k, 1)); bookRender(); }));
+    p.criteria.splice(k, 1); p.values.forEach((r) => r.splice(k, 1)); (p.profiles || []).forEach((r) => r.splice(k, 1)); bookRender(); }));
   $("bk-editor").querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
     bookRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
     p.variants.splice(i, 1); p.values.splice(i, 1); bookRender(); }));
@@ -947,6 +977,21 @@ function bookRenderOptions() {
       h += `<label>Uznawane dominacje (opcjonalnie): <input type="text" data-o="dominances" value="${esc((o.dominances || []).map((x) => String(x).replace(".", ",")).join(" "))}" placeholder="np. FSD SSD AFSD:0,333 ASSD:0,2" style="width:260px"></label>`;
     }
   }
+  if (ELE_FAMILY.has(m)) {
+    const num = (key, label, def, w = 60) => `<label>${esc(label)} <input type="text" data-o="${key}" value="${numStr(o[key] ?? def)}" style="width:${w}px"></label>`;
+    if (["electre_i", "electre_iv", "electre_is", "electre_i_sd"].includes(m)) h += num("s", "Próg zgodności s:", m === "electre_i_sd" ? 1 : "");
+    if (m === "electre_i") h += num("v", "Wspólny próg weta v:", "");
+    if (m === "electre_iii" || m === "electre_iii_sd") h += num("alpha", "s(λ) = α·λ + β; α:", -0.15) + num("beta", "β:", 0.3);
+    if (m === "electre_tri") {
+      h += num("cut", "Poziom cięcia λ:", 0.75);
+      h += sel("procedure", "Procedura:", [["both", "obie (wynik: pesymistyczna)"], ["pessimistic", "pesymistyczna"], ["optimistic", "optymistyczna"]], "both");
+    }
+    if (SD_VALUES.has(m)) {
+      h += sel("risk", "Decydent:", [["DARA", "awersja do ryzyka (FSD, SSD, TSD)"], ["INARA", "skłonność do ryzyka (FSD, SISD, TISD)"]], "DARA");
+      h += `<label>Uznawane dominacje (opcjonalnie): <input type="text" data-o="dominances" value="${esc((o.dominances || []).map((x) => String(x).replace(".", ",")).join(" "))}" placeholder="np. FSD SSD AFSD:0,333" style="width:220px"></label>`;
+    }
+    if (m === "electre_i_sd") h += sel("include_unclear", "Pary niejasne:", [["false", "tylko wskazać"], ["true", "włączyć do relacji"]], o.include_unclear ? "true" : "false");
+  }
   if (ANP_FAMILY.has(m)) {
     h += sel("method", "Wektor skali (porównania ostre):", [["eigen", "wektor własny"], ["saaty", "metoda Saaty'ego"], ["geometric", "średnie geometryczne"]], "eigen");
     h += sel("limit", "Granica:", [["auto", "potęgi, przy cyklu Cesàro"], ["power", "potęgi (3.49)"], ["cesaro", "Cesàro (3.48)"]], "auto");
@@ -975,13 +1020,16 @@ function bookRead() {
   if (ANP_FAMILY.has(m)) { anpRead(); BK.options = bookReadOptions(); return; }
   ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
   ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = SD_VALUES.has(m) ? parseDistCell(e.value) : parseCell(e.value); });
+  ed.querySelectorAll("[data-b]").forEach((e) => { p.profiles[+e.dataset.b][+e.dataset.k] = parseNum(e.value); });
+  if ($("bk-cats")) { const cats = $("bk-cats").value.split("|").map((x) => x.trim()).filter(Boolean);
+    if (cats.length !== p.profiles.length + 1) throw new Error(`Podaj ${p.profiles.length + 1} nazw kategorii (o jedną więcej niż profili)`); p.categories = cats; }
   ed.querySelectorAll("[data-c]").forEach((e) => {
     const c = p.criteria[+e.dataset.k], f = e.dataset.c, s = e.value.trim();
     if (f === "mandatory") { if (e.checked) c.mandatory = true; else delete c.mandatory; }
     else if (f === "name") c.name = s;
     else if (f === "direction") c.direction = s;
     else if (f === "type") { if (s === "1") delete c.type; else c.type = Number(s); }
-    else if (["q", "p", "s", "v", "L"].includes(f)) { if (s === "") delete c[f]; else { const v = parseNumbers(s); if (v.length === 2 && SD_VALUES.has(m)) c[f] = v; else if (v.length === 1) c[f] = v[0]; else throw new Error(`${c.name}: ${FIELD_LABEL[f]} — jedna liczba` + (SD_VALUES.has(m) ? " albo α; β" : "")); } }
+    else if (["q", "p", "s", "v", "L"].includes(f)) { if (s === "") delete c[f]; else { const v = parseNumbers(s); if (v.length === 2 && ALPHA_BETA(m)) c[f] = v; else if (v.length === 1) c[f] = v[0]; else throw new Error(`${c.name}: ${FIELD_LABEL[f]} — jedna liczba` + (ALPHA_BETA(m) ? " albo α; β" : "")); } }
     else if (f === "fuzzy_weight") { if (s) { const v = parseNumbers(s); if (v.length !== 3) throw new Error(`${c.name}: waga rozmyta wymaga trzech liczb`); c.fuzzy_weight = v; } else delete c.fuzzy_weight; }
     else if (f === "scale_type") { c.scale = Object.assign({}, typeof c.scale === "object" ? c.scale : {}, { type: s }); }
     else if (f === "scale_interp") { if (c.scale && c.scale.type === "value_function") c.scale.interpolation = s; }
@@ -1007,6 +1055,8 @@ function bookReadOptions() {
     const k = e.dataset.o, s = e.value.trim();
     if (k === "metric" || k === "q") o[k] = parseNum(s);
     else if (k === "divide") o.divide = s === "true";
+    else if (k === "include_unclear") o.include_unclear = s === "true";
+    else if (["s", "v", "cut", "alpha", "beta"].includes(k)) { if (s) o[k] = parseNum(s); }
     else if (k === "dominances") { if (s) o.dominances = s.split(/\s+/).filter(Boolean).map((t) => t.replace(",", ".").toUpperCase()); }
     else if (k === "ref_ideal" || k === "ref_anti") { if (s) { o.reference = o.reference || {}; o.reference[k === "ref_ideal" ? "ideal" : "anti_ideal"] = s.split("|").map(parseCell); } }
     else if (k === "eps" || k === "d") { if (s) o[k] = parseNum(s); }
@@ -1059,6 +1109,7 @@ function bookRun() {
     else if (PER_VAR.has(k)) h += lab + table(["", ...V], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
     else h += lab + table(["Wariant", ...C], v.map((row, i) => [V[i], ...row.map(fmtCell)]), { raw: true }) + "</div>";
   }
+  if (ELE_FAMILY.has(r.method)) { h += eleResultHtml(r, st, V, C); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (PROM_FAMILY.has(r.method)) { h += promResultHtml(r, st, V, C); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (ANP_FAMILY.has(r.method)) { h += anpResultHtml(st, V); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (Array.isArray(st.matrices) && st.matrices.length) {
@@ -1538,6 +1589,45 @@ function promResultHtml(r, st, V, C) {
     ["WP", "Słaby indeks preferencji WP (6.27)"], ["SP", "Ścisły indeks preferencji SP (6.28)"], ["TP", "Całkowity indeks preferencji TP (6.31)"],
     ["concordance", "Współczynniki zgodności c"], ["credibility", "Współczynniki wiarygodności σ"], ["omega", "Całkowite indeksy preferencji ω"]];
   for (const [k, t] of mats) if (st[k] && !(k === "pi" && r.method === "exprom")) h += pair(t, st[k]);
+  if (st.discordance) st.discordance.forEach((M, k) => { if (M.some((row) => row.some((x) => x > 0))) h += pair(`Wskaźniki niezgodności d — ${C[k]}`, M); });
+  return h;
+}
+// ---------- ELECTRE (rozdz. 5) ----------
+function eleResultHtml(r, st, V, C) {
+  let h = "";
+  const pair = (title, M, f = (x) => fmt(x)) => `<div class="small" style="margin-top:6px"><b>${esc(title)}</b></div><div class="tablewrap">` +
+    table(["", ...V], M.map((row, i) => [V[i], ...row.map((x, j) => i === j ? "—" : f(x))]), { raw: true }) + "</div>";
+  const bin = (x) => (x === null || x === undefined) ? "*" : (x ? "1" : "0");
+  if (st.edges) {
+    const lv = (L) => { const g = {}; L.forEach((l, i) => (g[l] = g[l] || []).push(V[i])); return Object.keys(g).sort((a, b) => a - b).map((l) => `${l}: ${g[l].join(", ")}`).join(" · "); };
+    h += `<div class="small" style="margin-top:6px"><b>Poziomy grafu</b> od najlepszych — ${esc(lv(st.levels_top_down))}<br>od najsłabszych (numerowane od góry) — ${esc(lv(st.levels_bottom_up))}</div>`;
+    h += `<div class="small">Łuki relacji przewyższania: ${st.edges.map(([a, b]) => esc(a) + " → " + esc(b)).join(", ") || "brak"}</div>`;
+  }
+  if (st.descending_classes) {
+    const cls = (L) => L.map((c, i) => `${i + 1}. ${c.join(", ")}`).join(" · ");
+    h += `<div class="small" style="margin-top:6px"><b>Destylacja zstępująca</b> (od najlepszej klasy): ${esc(cls(st.descending_classes))}<br>` +
+      `<b>Destylacja wstępująca</b> (od najlepszej klasy): ${esc(cls(st.ascending_classes))}</div>`;
+    h += pair("Ranking końcowy — P: wiersz lepszy, P-: kolumna lepsza, I: równoważne, R: nieporównywalne", st.final_relations, (x) => esc(x));
+  }
+  if (r.categories) {
+    h += `<div class="tablewrap">` + table(["Wariant", "pesymistyczna", "optymistyczna", ...st.profiles.flatMap((_, k) => [`σ(a, b${k + 1})`, `σ(b${k + 1}, a)`])],
+      V.map((v, i) => [v, esc(st.pessimistic[i]), esc(st.optimistic[i]), ...st.profiles.flatMap((_, k) => [fmt(st.sigma_a_b[i][k]), fmt(st.sigma_b_a[i][k])])]), { raw: true }) + "</div>";
+  }
+  if (st.means) h += `<div class="small" style="margin-top:6px"><b>Wartości oczekiwane μ</b></div><div class="tablewrap">` +
+    table(["Wariant", ...C], st.means.map((row, i) => [V[i], ...row.map((x) => fmt(x))]), { raw: true }) + "</div>";
+  const doms = st.dominance || st.dominance_T;
+  if (doms) doms.forEach((M, k) => {
+    const NT = st.dominance_NT ? st.dominance_NT[k] : null;
+    h += `<div class="small" style="margin-top:6px"><b>Dominacje stochastyczne — ${esc(C[k])}</b> (wiersz dominuje kolumnę${NT ? "; w nawiasie niezgodne z funkcją użyteczności, SD_NT" : ""})</div><div class="tablewrap">` +
+      table(["", ...V], M.map((row, i) => [V[i], ...row.map((x, j) => i === j ? "—" : esc(x || (NT && NT[i][j] ? `(${NT[i][j]})` : "")))]), { raw: true }) + "</div>";
+  });
+  if (st.concordance) h += pair("Współczynniki zgodności c", st.concordance);
+  if (st.concordance_E) { h += pair("Wyraźna zgodność c_E (5.35)", st.concordance_E) + pair("Niewyraźna zgodność c_N (5.37)", st.concordance_N) + pair("Suma c_E + c_N", st.concordance_sum); }
+  if (st.concordance_set) h += pair("Zbiór zgodności C_s", st.concordance_set, bin);
+  if (st.discordance_level) h += pair("Poziomy niezgodności d (5.12; * — nie sprawdzano)", st.discordance_level, (x) => x === null ? "*" : fmt(x));
+  if (st.discordance_set) h += pair("Zbiór niezgodności D", st.discordance_set, bin);
+  if (st.outranking) h += pair("Relacja przewyższania S", st.outranking, bin);
+  if (st.credibility) h += pair("Współczynniki wiarygodności σ", st.credibility);
   if (st.discordance) st.discordance.forEach((M, k) => { if (M.some((row) => row.some((x) => x > 0))) h += pair(`Wskaźniki niezgodności d — ${C[k]}`, M); });
   return h;
 }

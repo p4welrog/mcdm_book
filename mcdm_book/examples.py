@@ -73,6 +73,21 @@ _C_611 = [{"name": "f1", "weight": 0.40, "p": 0.5, "v": 0.8}, {"name": "f2", "we
           {"name": "f3", "weight": 0.25, "p": 10, "v": 35}]
 
 
+_X5 = [[3, 6, 7, 8], [5, 4, 7, 9], [10, 2, 5, 4], [4, 8, 5, 2], [2, 5, 11, 1], [9, 6, 3, 6], [4, 9, 7, 6],
+       [1, 7, 9, 10], [5, 3, 6, 4]]
+_X513 = [_X5[i] for i in (0, 2, 4, 5, 6, 7)]
+_W5 = [0.08, 0.33, 0.17, 0.42]
+_C5 = [{"name": f"f{k + 1}", "weight": w} for k, w in enumerate(_W5)]
+_C5V = [{"name": f"f{k + 1}", "weight": w, "v": v} for k, (w, v) in enumerate(zip(_W5, (5, 7, 6, 5)))]
+_C5III = [{"name": f"f{k + 1}", "weight": w, "q": q, "p": pp, "v": v}
+          for k, (w, q, pp, v) in enumerate(zip(_W5, (1, 2, 1, 1), (3, 4, 4, 3), (5, 7, 6, 5)))]
+
+
+def _tri(name):
+    return {"name": name, "variants": _V6, "criteria": _C5III, "values": _X513,
+            "profiles": [[5, 4, 6, 3], [7, 6, 8, 8]], "categories": ["słabe", "średnie", "dobre"]}
+
+
 def _obs(scores):
     """scores[k][osoba][wariant] → oceny wariantów jako obserwacje (rozkłady empiryczne)."""
     m = len(scores[0][0])
@@ -220,6 +235,35 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                               "AS": {"clusters": ["AT", "W"], "matrix": [[1, "silnie ważniejsze"], [None, 1]]},
                               "AT": {"clusters": ["AS", "W"], "matrix": [[1, None], ["umiarkowanie ważniejsze", 1]]},
                               "W": {"clusters": ["AS", "AT"], "matrix": [[1, "równoważne"], [None, 1]]}}}},
+    "P5.10": {"title": "Przykład 5.10 — ELECTRE I", "method": "electre_i", "options": {"s": 0.83, "v": 6},
+              "problem": {"name": "Przykład 5.10", "variants": [f"a{i}" for i in range(1, 10)], "criteria": _C5,
+                          "values": _X5}},
+    "P5.11": {"title": "Przykład 5.11 — ELECTRE Iv (progi weta kryteriów)", "method": "electre_iv",
+              "options": {"s": 0.83},
+              "problem": {"name": "Przykład 5.11", "variants": [f"a{i}" for i in range(1, 10)], "criteria": _C5V,
+                          "values": _X5}},
+    "P5.12": {"title": "Przykład 5.12 — ELECTRE Is", "method": "electre_is", "options": {"s": 0.83},
+              "problem": {"name": "Przykład 5.12", "variants": [f"a{i}" for i in range(1, 10)], "criteria": _C5V,
+                          "values": _X5}},
+    "P5.13": {"title": "Przykład 5.13 — ELECTRE III (destylacje, ranking końcowy)", "method": "electre_iii",
+              "options": {}, "problem": {"name": "Przykład 5.13", "variants": _V6, "criteria": _C5III,
+                                         "values": _X513}},
+    "P5.14": {"title": "Przykład 5.14 — ELECTRE III (dane programu ELECTRE III/IV)", "method": "electre_iii",
+              "options": {}, "problem": {"name": "Przykład 5.14", "variants": _V6, "criteria": _C5III,
+                                         "values": [_X513[0], [4, 8, 5, 2]] + _X513[2:]}},
+    "P5.15": {"title": "Przykład 5.15 — ELECTRE TRI, procedura pesymistyczna", "method": "electre_tri",
+              "options": {"cut": 0.75, "procedure": "pessimistic"}, "problem": _tri("Przykład 5.15")},
+    "P5.16": {"title": "Przykład 5.16 — ELECTRE TRI, procedura optymistyczna", "method": "electre_tri",
+              "options": {"cut": 0.75, "procedure": "optimistic"}, "problem": _tri("Przykład 5.16")},
+    "P5.19": {"title": "Przykład 5.19 — ELECTRE I z dominacjami stochastycznymi (s = 0,75, para niejasna włączona)",
+              "method": "electre_i_sd", "options": {"s": 0.75, "risk": "DARA", "include_unclear": True},
+              "problem": {"name": "Przykład 5.19", "variants": [f"a{i}" for i in range(1, 6)],
+                          "criteria": [{"name": c["name"], "weight": c["weight"]} for c in _C_611],
+                          "values": _dist_611()}},
+    "P5.20": {"title": "Przykład 5.20 — ELECTRE III z dominacjami stochastycznymi", "method": "electre_iii_sd",
+              "options": {"risk": "DARA"},
+              "problem": {"name": "Przykład 5.20", "variants": [f"a{i}" for i in range(1, 6)], "criteria": _C_611,
+                          "values": _dist_611()}},
     "P6.2": {"title": "Przykład 6.2 — PROMETHEE I (kryteria typów 5, 4, 3, 1)", "method": "promethee_i", "options": {},
              "problem": {"name": "Przykład 6.2", "variants": [f"a{i}" for i in range(1, 8)],
                          "criteria": [{"name": "f1", "weight": 0.4, "type": 5, "q": 5, "p": 10},

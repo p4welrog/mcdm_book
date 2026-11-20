@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, anp, promethee, reference, selection
+from . import additive, ahp, anp, electre, promethee, reference, selection
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -63,6 +63,34 @@ METHODS: Dict[str, Dict[str, Any]] = {
                      "needs": "oceny [l, m, u] ≥ 0, kierunki, wagi",
                      "options": {"cost_norm": reference.COST_NORMS,
                                  "reference": "{ideal: [...], anti_ideal: [...]} — własne punkty odniesienia"}},
+    "electre_i": {"fn": electre.electre_i, "chapter": "5.2", "title": "ELECTRE I",
+                  "needs": "oceny liczbowe na wspólnej skali, wagi; próg zgodności s i wspólny próg weta v",
+                  "options": {"s": "próg zgodności (0,5–1)", "v": "wspólny próg weta"}},
+    "electre_iv": {"fn": electre.electre_iv, "chapter": "5.2", "title": "ELECTRE Iv",
+                   "needs": "oceny liczbowe, wagi; progi weta v kryteriów (liczba albo [α, β] = α·f + β)",
+                   "options": {"s": "próg zgodności (0,5–1)"}},
+    "electre_is": {"fn": electre.electre_is, "chapter": "5.2", "title": "ELECTRE Is",
+                   "needs": "oceny liczbowe, wagi; progi q, p, v kryteriów (pseudokryteria)",
+                   "options": {"s": "próg zgodności (0,5–1)"}},
+    "electre_iii": {"fn": electre.electre_iii, "chapter": "5.3", "title": "ELECTRE III",
+                    "needs": "oceny liczbowe, wagi; progi q, p (wymagane), v kryteriów — liczby albo [α, β] = α·f + β",
+                    "options": {"alpha": "s(λ) = α·λ + β, domyślnie α = −0,15", "beta": "domyślnie β = 0,30"}},
+    "electre_tri": {"fn": electre.electre_tri, "chapter": "5.4", "title": "ELECTRE TRI (sortowanie)",
+                    "needs": "oceny liczbowe, wagi; progi q, p, v; \"profiles\" — profile graniczne od najniższego; "
+                             "opcjonalnie \"categories\" — nazwy kategorii od najgorszej",
+                    "options": {"cut": "poziom cięcia λ (0,5–1, domyślnie 0,75)",
+                                "procedure": "pessimistic | optimistic | both (domyślnie both: wynik pesymistyczny)"}},
+    "electre_i_sd": {"fn": electre.electre_i_sd, "chapter": "5.5",
+                     "title": "ELECTRE I z dominacjami stochastycznymi",
+                     "needs": "oceny jako rozkłady {values, probs} lub {obs}; wagi",
+                     "options": {"s": "próg zgodności (domyślnie 1; obniżać, dopóki s > 0,5)", "risk": promethee.RISKS,
+                                 "dominances": "jak w promethee_ii_sd",
+                                 "include_unclear": "włącz pary niejasne (c_E < s ≤ c_E + c_N) do relacji"}},
+    "electre_iii_sd": {"fn": electre.electre_iii_sd, "chapter": "5.6",
+                       "title": "ELECTRE III z dominacjami stochastycznymi",
+                       "needs": "oceny jako rozkłady; wagi; progi p, v (opcjonalnie q) — liczby albo [α, β] = α·μ + β (5.39)",
+                       "options": {"risk": promethee.RISKS, "dominances": "jak w promethee_ii_sd",
+                                   "alpha": "s(λ) = α·λ + β, domyślnie α = −0,15", "beta": "domyślnie β = 0,30"}},
     "promethee_i": {"fn": promethee.promethee_i, "chapter": "6.2", "title": "PROMETHEE I (ranking częściowy)",
                     "needs": "oceny liczbowe, kierunki, wagi; w kryteriach type (1–6) i progi q, p, s (tabl. 6.1)",
                     "options": {"divide": "dzielenie przepływów przez m − 1 (domyślnie true)"},
