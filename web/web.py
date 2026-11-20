@@ -274,3 +274,26 @@ def book_run(payload: str) -> str:
         return _out(book_api.run_safe(json.loads(payload)))
     except Exception as e:  # noqa: BLE001 — błąd programu zwracamy stronie
         return _out({"error": f"{type(e).__name__}: {e}"})
+
+
+def book_matrix_check(payload: str) -> str:
+    """Bieżąca kontrola jednej macierzy porównań (edytor AHP / REMBRANDT)."""
+    from mcdm_book import ahp as book_ahp
+    from mcdm_book.problem import ProblemError
+    a = json.loads(payload)
+    notes: list = []
+    try:
+        M, kind = a["matrix"], a["kind"]
+        n = len(M)
+        if kind == "rembrandt":
+            D = book_ahp.delta_matrix(M, n, "Macierz", notes)
+            g = float(a.get("gamma", 0.6931471805599453))
+            r = book_ahp._rembrandt_vector(D, g)
+            return _out({"w": r["w"], "notes": notes})
+        A = book_ahp.reciprocal_matrix(M, n, "Macierz", notes)
+        pr = book_ahp.priority_vector(A, a.get("method", "eigen"))
+        cons = book_ahp.consistency(pr["lambda_max"], n)
+        return _out({"w": pr["w"], "lambda_max": pr["lambda_max"], "gamma": cons["gamma"],
+                     "consistent": cons["consistent"], "notes": notes})
+    except (ProblemError, ValueError, ZeroDivisionError) as e:
+        return _out({"error": str(e)})

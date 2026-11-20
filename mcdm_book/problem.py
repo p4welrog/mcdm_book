@@ -42,6 +42,7 @@ class Problem:
     criteria: List[Criterion]
     values: List[List[Any]]
     name: str = ""
+    extra: Dict[str, Any] = field(default_factory=dict)   # dane specyficzne dla metody (np. macierze porównań AHP)
 
     @property
     def m(self) -> int:
@@ -76,7 +77,6 @@ class Problem:
         try:
             variants = [str(v) for v in d["variants"]]
             crit_in = d["criteria"]
-            values = d["values"]
         except KeyError as e:
             raise ProblemError(f"Brak pola {e.args[0]!r} w opisie zadania") from None
         criteria = []
@@ -94,6 +94,9 @@ class Problem:
                 raise ProblemError(f"Kryterium {name}: kierunek musi być \"max\" albo \"min\"")
             w = c.pop("weight", None)
             criteria.append(Criterion(name, direction, None if w is None else float(w), c))
+        values = d.get("values")
+        if values is None:
+            values = [[None] * len(criteria) for _ in variants]
         if len(set(variants)) != len(variants):
             raise ProblemError("Nazwy wariantów muszą być różne")
         if len(values) != len(variants):
@@ -101,7 +104,8 @@ class Problem:
         for i, row in enumerate(values):
             if len(row) != len(criteria):
                 raise ProblemError(f"Wariant {variants[i]}: {len(row)} ocen, a kryteriów jest {len(criteria)}")
-        return cls(variants, criteria, [list(r) for r in values], str(d.get("name", "")))
+        extra = {k: v for k, v in d.items() if k not in ("variants", "criteria", "values", "name")}
+        return cls(variants, criteria, [list(r) for r in values], str(d.get("name", "")), extra)
 
     def to_dict(self) -> Dict[str, Any]:
         crit = []
@@ -110,10 +114,12 @@ class Problem:
             if c.weight is not None:
                 x["weight"] = c.weight
             crit.append(x)
-        return {"name": self.name, "variants": self.variants, "criteria": crit, "values": self.values}
+        return {"name": self.name, "variants": self.variants, "criteria": crit, "values": self.values, **self.extra}
 
 
 def crisp(v: Any, where: str) -> float:
+    if v is None:
+        raise ProblemError(f"{where}: brak oceny")
     if isinstance(v, (list, tuple)):
         raise ProblemError(f"{where}: oczekiwano liczby, a jest {list(v)} (dane rozmyte wymagają metody rozmytej)")
     try:

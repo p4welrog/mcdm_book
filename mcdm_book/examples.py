@@ -33,6 +33,8 @@ _P73 = [[(2, 3, 5), (3, 6, 10), (6, 7, 8), (7, 8, 10)], [(3, 5, 6), (2, 4, 5), (
 _W7 = [0.25, 0.15, 0.4, 0.2]
 _SMART_DATA = [[28, 7, 30], [29, 6, 60], [20, 7, 50], [20, 2, 90]]
 
+_V6 = [f"a{i}" for i in range(1, 7)]
+
 EXAMPLES: Dict[str, Dict[str, Any]] = {
     "P2.1": {"title": "Przykład 2.1 — SAW, wybór konta w banku", "method": "saw",
              "options": {"normalization": "minmax"}, "problem": _banks("Wybór konta osobistego")},
@@ -63,6 +65,36 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                                        {"name": "f2", "direction": "max", "rank": 2},
                                        {"name": "f3", "direction": "max", "rank": 1}],
                           "values": _SMART_DATA}},
+    "P3.4": {"title": "Przykład 3.4 — AHP (dwa kryteria z porównań, trzecie z wartości)", "method": "ahp",
+             "options": {"method": "saaty"},
+             "problem": {"name": "Przykład 3.4", "variants": _V6,
+                         "criteria": [{"name": "f1"}, {"name": "f2"}, {"name": "f3", "direction": "max"}],
+                         "values": [[None, None, 21], [None, None, 25], [None, None, 19], [None, None, 17],
+                                    [None, None, 28], [None, None, 25]],
+                         "criteria_comparisons": [[1, "1/7", "1/3"], [7, 1, 3], [3, "1/3", 1]],
+                         "comparisons": {
+                             "f1": [[1, 7, 9, 3, 8, 9], ["1/7", 1, 5, "1/2", 5, 7], ["1/9", "1/5", 1, "1/5", 1, 3],
+                                    ["1/3", 2, 5, 1, 5, 7], ["1/8", "1/5", 1, "1/5", 1, 5],
+                                    ["1/9", "1/7", "1/3", "1/7", "1/5", 1]],
+                             "f2": [[1, 3, 7, 3, 7, "1/2"], ["1/3", 1, 5, "1/3", 4, "1/5"], ["1/7", "1/5", 1, "1/7", "1/4", "1/7"],
+                                    ["1/3", 3, 7, 1, 5, "1/3"], ["1/7", "1/4", 4, "1/5", 1, "1/5"], [2, 5, 7, 3, 5, 1]]}}},
+    "P3.7": {"title": "Przykład 3.7 — REMBRANDT (γ = ln √2 także dla wariantów, jak w przykładzie)",
+             "method": "rembrandt", "options": {"gamma_variants": 0.34657359027997264},
+             "problem": {"name": "Przykład 3.7", "variants": _V6,
+                         "criteria": [{"name": "f1"}, {"name": "f2"}, {"name": "f3"}],
+                         "criteria_comparisons": [[0, -6, -2], [6, 0, 2], [2, -2, 0]],
+                         "comparisons": {
+                             "f1": [[0, 6, 8, 2, 7, 8], [-6, 0, 4, -1, 4, 6], [-8, -4, 0, -4, 0, 2], [-2, 1, 4, 0, 4, 6],
+                                    [-7, -4, 0, -4, 0, 4], [-8, -6, -2, -6, -4, 0]],
+                             "f2": [[0, 2, 6, 2, 6, -1], [-2, 0, 4, -2, -3, -4], [-6, -4, 0, -6, -3, -6],
+                                    [-2, 3, 6, 0, 4, -2], [-6, -3, 3, -4, 0, -4], [1, 4, 6, 2, 4, 0]],
+                             "f3": [[0, 4, 8, 3, 5, 4], [-4, 0, -4, -6, 3, -7], [-8, 4, 0, -4, -3, -4],
+                                    [-3, 6, 4, 0, 4, -1], [-5, -3, 3, -4, 0, -4], [-4, 7, 4, 1, 4, 0]]}}},
+    "P3.10": {"title": "Przykład 3.10 — rozmyty AHP (Mikhailov), dwa warianty, ocena (1, 3, 4)",
+              "method": "fuzzy_ahp", "options": {"alphas": [0, 0.2, 0.4, 0.6, 0.8, 1], "d": 1},
+              "problem": {"name": "Przykład 3.10", "variants": ["a1", "a2"],
+                          "criteria": [{"name": "f", "weight": 1}],
+                          "comparisons": {"f": [[1, [1, 3, 4]], [None, 1]]}}},
     "P7.1": {"title": "Przykład 7.1 — TOPSIS", "method": "topsis", "options": {"metric": 2},
              "problem": {"name": "Przykład 7.1", "variants": [f"a{i}" for i in range(1, 10)],
                          "criteria": [{"name": f"f{k + 1}", "direction": "max", "weight": w} for k, w in enumerate(_W7)],
