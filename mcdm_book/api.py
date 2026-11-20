@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, reference
+from . import additive, ahp, reference, selection
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -42,6 +42,9 @@ METHODS: Dict[str, Dict[str, Any]] = {
                   "needs": "macierze porównań z trójkami [l, m, u] (lub nazwami ze skali Changa, tabl. 3.4)",
                   "options": {"alphas": "poziomy α (domyślnie 0; 0,2; …; 1)", "d": "tolerancja względem zera (domyślnie 1)"},
                   "scale": {k: list(v) for k, v in ahp.CHANG_SCALE.items()}},
+    "compromise": {"fn": selection.compromise, "chapter": "9.3", "title": "Programowanie kompromisowe (L1, wzór 9.1)",
+                   "needs": "oceny liczbowe, kierunki, wagi; kryteria obowiązkowe z polem mandatory: true",
+                   "options": {"ideal": "wartości optymalne kryteriów (domyślnie najlepsze w danych)"}},
     "topsis": {"fn": reference.topsis, "chapter": "7.1", "title": "TOPSIS",
                "needs": "oceny liczbowe, kierunki, wagi", "options": {"metric": "rząd metryki p (domyślnie 2)"}},
     "fuzzy_topsis": {"fn": reference.fuzzy_topsis, "chapter": "7.2", "title": "Rozmyty TOPSIS",
@@ -56,13 +59,27 @@ METHODS: Dict[str, Dict[str, Any]] = {
 }
 
 
+SELECT_METHOD = {"chapter": "9.3", "title": "Wybór metody (model typu Gershona)",
+                 "needs": "profile — cechy problemu (bez pola problem)", "profile": selection.PROFILE_FIELDS,
+                 "options": {"scores": "nadpisanie ocen metod {metoda: {cecha: 0–10}}",
+                             "methods": "lista rozważanych metod (domyślnie wszystkie)"}}
+
+
 def methods() -> Dict[str, Any]:
     """Opis metod do wyświetlenia lub wyboru (bez funkcji)."""
-    return {k: {kk: vv for kk, vv in v.items() if kk != "fn"} for k, v in METHODS.items()}
+    out = {k: {kk: vv for kk, vv in v.items() if kk != "fn"} for k, v in METHODS.items()}
+    out["select_method"] = SELECT_METHOD
+    return out
 
 
 def run(request: Dict[str, Any]) -> Dict[str, Any]:
     method = request.get("method")
+    if method == "select_method":
+        opts = dict(request.get("options") or {})
+        unknown = set(opts) - {"scores", "methods"}
+        if unknown:
+            raise ProblemError(f"select_method: nieznane opcje {', '.join(sorted(unknown))}")
+        return selection.select(request.get("profile") or {}, **opts)
     if method not in METHODS:
         raise ProblemError(f"Nieznana metoda {method!r}; dostępne: {', '.join(METHODS)}")
     fn: Callable = METHODS[method]["fn"]

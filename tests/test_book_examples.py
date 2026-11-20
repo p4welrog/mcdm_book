@@ -171,7 +171,7 @@ def test_cli(tmp_path):
     r = json.loads(out)
     assert r["method"] == "topsis" and r["steps"]["metric"] == 1
     assert len(json.loads(subprocess.run([sys.executable, "-m", "mcdm_book", "methods"], capture_output=True,
-                                         text=True, check=True).stdout)) == len(api.METHODS)
+                                         text=True, check=True).stdout)) == len(api.methods())
 
 
 def test_all_examples_json_serializable():
