@@ -11,7 +11,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, anp, bipolar, electre, hybrid, promethee, reference, selection
+from . import additive, ahp, anp, bipolar, electre, hybrid, macbeth, promethee, reference, selection, zapros
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -63,6 +63,23 @@ METHODS: Dict[str, Dict[str, Any]] = {
                      "needs": "oceny [l, m, u] ≥ 0, kierunki, wagi",
                      "options": {"cost_norm": reference.COST_NORMS,
                                  "reference": "{ideal: [...], anti_ideal: [...]} — własne punkty odniesienia"}},
+    "macbeth": {"fn": macbeth.macbeth, "chapter": "4.1", "title": "MACBETH",
+                "needs": "kryteria z polem \"macbeth\": {levels (poziomy jakościowe lub liczbowe; brak = porównanie "
+                         "wariantów), judgements (oceny różnic: 0 = równie atrakcyjne, 1–6 = bardzo mała … ekstremalna, "
+                         "[s, t], \"positive\"; wiersz lepszy od kolumny), upper, lower} albo gotowe oceny 0–100 w values; "
+                         "\"criteria_judgements\" (kryteria + opcjonalnie element odniesienia [ all lower ]) albo wagi",
+                "options": {}},
+    "macbeth_scale": {"fn": macbeth.macbeth_scale, "chapter": "4.1", "title": "Skala MACBETH (jedna macierz ocen)",
+                      "needs": "elementy jako warianty, \"judgements\" — macierz ocen różnic atrakcyjności",
+                      "options": {"upper": "element = 100 (domyślnie najlepszy)", "lower": "element = 0 (najgorszy)"}},
+    "zapros": {"fn": zapros.zapros, "chapter": "4.2.2", "title": "ZAPROS",
+               "needs": "kryteria z polem \"scale\" (oceny od najlepszej), values = oceny; \"jos\" (grupy ocen wg rang "
+                        "wspólnej skali porządkowej) albo \"y_comparisons\" (porównania wektorów ze zbioru Y)",
+               "options": {}},
+    "zapros_iii": {"fn": zapros.zapros_iii, "chapter": "4.2.3", "title": "ZAPROS III",
+                   "needs": "kryteria z polem \"scale\"; \"jscv\" (wariacje od najmniej dotkliwej, np. \"C1>C2\") albo "
+                            "\"jsqv\" (skale dla par kryteriów) albo \"qv_comparisons\" (tablice porównań wariacji)",
+                   "options": {}},
     "electre_i": {"fn": electre.electre_i, "chapter": "5.2", "title": "ELECTRE I",
                   "needs": "oceny liczbowe na wspólnej skali, wagi; próg zgodności s i wspólny próg weta v",
                   "options": {"s": "próg zgodności (0,5–1)", "v": "wspólny próg weta"}},

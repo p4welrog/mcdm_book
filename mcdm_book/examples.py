@@ -129,6 +129,47 @@ _O164 = [[0, 3, 1, 4, 4, 4, 1, 4, 1, 1, 2, 2], [3, 0, 1, 4, 2, 1, 0, 2, 1, 1, 2,
 _O163 = [[2, 2, 2, 3], [3, 2, 0, 3], [3, 0, 3, 2], [0, 4, 4, 0]]
 
 
+_ZS = lambda L: [L + "1", L + "2", L + "3"]
+_CRIT_ZAPROS = [{"name": "f1 działalność dydaktyczna", "scale": _ZS("A")},
+                {"name": "f2 udokumentowany dorobek naukowy", "scale": _ZS("B")},
+                {"name": "f3 potencjał w kierowaniu projektami", "scale": _ZS("C")}]
+_V46 = [["A1", "B2", "C2"], ["A2", "B2", "C1"], ["A3", "B1", "C2"], ["A1", "B3", "C1"], ["A2", "B1", "C3"],
+        ["A3", "B2", "C2"]]
+_Y46 = [["I", "P", "P", "P", "P", "P", "P"], [None, "I", "P", "P", "P", None, "P"],
+        [None, None, "I", None, None, None, "I"], [None, None, "P", "I", "P", None, "P"],
+        [None, None, "P", None, "I", None, "P"], [None, "P", "P", "P", "P", "I", "P"],
+        [None, None, "I", None, None, None, "I"]]
+_QV_TABLE = [["I", "P", "P", "P", "P", "P"], [None, "I", None, None, "P", None], [None, "P", "I", None, "P", "P"],
+             [None, "P", "P", "I", "P", "P"], [None, None, None, None, "I", None], [None, "P", None, None, "P", "I"]]
+_QV_TABLE_C = [["I", "P", "P", None, "P", "P"], [None, "I", None, None, "P", None], [None, "P", "I", None, "P", "P"],
+               ["P", "P", "P", "I", "P", "P"], [None, None, None, None, "I", None], [None, "P", None, None, "P", "I"]]
+_N = None
+_P43 = {"name": "Wybór telefonu komórkowego",
+        "variants": ["Samsung Galaxy S3", "HTC One S", "LG Prada Phone 3.0", "Sony Xperia P", "Nokia Lumia 800"],
+        "criteria": [
+            {"name": "Jakość wyświetlania",
+             "macbeth": {"levels": ["Doskonała", "Bardzo dobra", "Dobra", "Neutralna", "Niewystarczająca"],
+                         "judgements": [[0, "moderate", "strong", "strong", "extreme"],
+                                        [_N, 0, "moderate", "positive", "very strong"],
+                                        [_N, _N, 0, "moderate", "strong"], [_N, _N, _N, 0, "moderate"],
+                                        [_N, _N, _N, _N, 0]],
+                         "upper": "Bardzo dobra", "lower": "Neutralna"}},
+            {"name": "Przekątna wyświetlacza"}, {"name": "Kolor telefonu"},
+            {"name": "Ciężar",
+             "macbeth": {"levels": [120, 122, 130, 140, 144],
+                         "judgements": [[0, "weak", "moderate", "strong", "very strong"],
+                                        [_N, 0, "moderate", "positive", "very strong"],
+                                        [_N, _N, 0, "strong", "strong"], [_N, _N, _N, 0, "strong"],
+                                        [_N, _N, _N, _N, 0]],
+                         "upper": 122, "lower": 140}}],
+        "values": [["Doskonała", 500, 200, 133], ["Dobra", 100, 100, 121], ["Bardzo dobra", 100, 0, 140],
+                   ["Neutralna", 0, 100, 122], ["Bardzo dobra", -400, -100, 144]],
+        "criteria_judgements": [[0, "moderate", _N, "very strong", "very strong"],
+                                [_N, 0, _N, "very strong", "very strong"],
+                                ["strong", "strong", 0, "very strong", "very strong"],
+                                [_N, _N, _N, 0, "weak"], [_N, _N, _N, _N, 0]]}
+
+
 def _obs(scores):
     """scores[k][osoba][wariant] → oceny wariantów jako obserwacje (rozkłady empiryczne)."""
     m = len(scores[0][0])
@@ -276,6 +317,43 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                               "AS": {"clusters": ["AT", "W"], "matrix": [[1, "silnie ważniejsze"], [None, 1]]},
                               "AT": {"clusters": ["AS", "W"], "matrix": [[1, None], ["umiarkowanie ważniejsze", 1]]},
                               "W": {"clusters": ["AS", "AT"], "matrix": [[1, "równoważne"], [None, 1]]}}}},
+    "P4.2": {"title": "Przykład 4.2 — MACBETH: wagi kryteriów z ocen różnic istotności", "method": "macbeth_scale",
+             "options": {},
+             "problem": {"name": "Zakup mieszkania (Pan Hieronim)",
+                         "variants": ["f1 cena lokalu", "f2 powierzchnia", "f3 układ pomieszczeń", "f4 czas dojazdu"],
+                         "criteria": [],
+                         "judgements": [[0, "duża", "duża", "bardzo duża"], [None, 0, "bardzo mała", "umiarkowana"],
+                                        [None, None, 0, "mała"], [None, None, None, 0]]}},
+    "P4.3": {"title": "Przykład 4.3 — MACBETH (dane z programu M-MACBETH; przekątna i kolor jako gotowe oceny)",
+             "method": "macbeth", "options": {}, "problem": _P43},
+    "P4.5": {"title": "Przykład 4.5 — ZAPROS: porównanie dwóch kandydatów przez JOS", "method": "zapros",
+             "options": {},
+             "problem": {"name": "Konkurs na stanowisko adiunkta", "variants": ["Katarzyna", "Wojciech"],
+                         "criteria": [{"name": f"f{k + 1}", "scale": _ZS("ABCDEF"[k])} for k in range(6)],
+                         "values": [["A2", "B2", "C1", "D1", "E1", "F1"], ["A1", "B1", "C2", "D2", "E1", "F1"]],
+                         "jos": [["A1", "B1", "C1", "D1", "E1", "F1"], ["C2", "E2"], ["A2", "D2", "F2"], ["B2"],
+                                 ["B3", "E3", "F3"], ["A3", "C3", "D3"]]}},
+    "P4.6": {"title": "Przykład 4.6 — ZAPROS (JOS z porównań wektorów, porządek częściowy)", "method": "zapros",
+             "options": {},
+             "problem": {"name": "Wybór kandydata (6 osób)", "variants": [f"a{i}" for i in range(1, 7)],
+                         "criteria": _CRIT_ZAPROS, "values": _V46, "y_comparisons": _Y46}},
+    "P4.7": {"title": "Przykład 4.7 — ZAPROS III: porównanie par kandydatów (JSQV → JSCV)", "method": "zapros_iii",
+             "options": {},
+             "problem": {"name": "Konkurs na asystenta", "variants": ["Zofia", "Kazimierz", "Karolina", "Marek"],
+                         "criteria": _CRIT_ZAPROS,
+                         "values": [["A3", "B1", "C2"], ["A2", "B2", "C1"], ["A1", "B2", "C3"], ["A3", "B3", "C1"]],
+                         "jsqv": [["A1>A2", "B1>B2", "A1>A3", "B1>B3", "A2>A3", "B2>B3"],
+                                  ["C1>C2", "B1>B2", "B1>B3", "C1>C3", "B2>B3", "C2>C3"],
+                                  ["C1>C2", "A1>A2", "A1>A3", "C1>C3", "A2>A3", "C2>C3"]]}},
+    "P4.8": {"title": "Przykład 4.8 — ZAPROS III (porównania wariacji, FIQ, rangi)", "method": "zapros_iii",
+             "options": {},
+             "problem": {"name": "Wybór kandydata (9 osób)", "variants": [f"K{i}" for i in range(1, 10)],
+                         "criteria": _CRIT_ZAPROS,
+                         "values": _V46 + [["A3", "B2", "C1"], ["A3", "B3", "C1"], ["A2", "B1", "C2"]],
+                         "qv_comparisons": [
+                             {"qv": ["A1>A2", "A1>A3", "A2>A3", "B1>B2", "B1>B3", "B2>B3"], "matrix": _QV_TABLE},
+                             {"qv": ["B1>B2", "B1>B3", "B2>B3", "C1>C2", "C1>C3", "C2>C3"], "matrix": _QV_TABLE_C},
+                             {"qv": ["A1>A2", "A1>A3", "A2>A3", "C1>C2", "C1>C3", "C2>C3"], "matrix": _QV_TABLE_C}]}},
     "P5.10": {"title": "Przykład 5.10 — ELECTRE I", "method": "electre_i", "options": {"s": 0.83, "v": 6},
               "problem": {"name": "Przykład 5.10", "variants": [f"a{i}" for i in range(1, 10)], "criteria": _C5,
                           "values": _X5}},
