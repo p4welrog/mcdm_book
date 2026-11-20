@@ -75,7 +75,10 @@ def main():
         expected = {"P2.1": ("saw", "a3"), "P2.2": ("scoring", "a3"), "P2.3": ("fsaw", "a3"), "P2.7": ("smart", "a3, a4"),
                     "P2.11": ("smarter", "a4"), "P3.4": ("ahp", "a6"), "P3.7": ("rembrandt", "a1"),
                     "P3.10": ("fuzzy_ahp", "a1"), "P3.12": ("anp", "a1"), "P3.13": ("anp", "dostawca Y"),
-                    "P3.14": ("fuzzy_anp", "a1"), "P6.2": ("promethee_i", "a5"), "P6.5": ("promethee_ii", "a1"),
+                    "P3.14": ("fuzzy_anp", "a1"), "P5.10": ("electre_i", "a7, a8"), "P5.11": ("electre_iv", "a7, a8"),
+                    "P5.12": ("electre_is", "a7, a8"), "P5.13": ("electre_iii", "a6"), "P5.14": ("electre_iii", "a6"),
+                    "P5.15": ("electre_tri", "a1"), "P5.16": ("electre_tri", "a1"), "P5.19": ("electre_i_sd", "a4, a5"),
+                    "P5.20": ("electre_iii_sd", "a4"), "P6.2": ("promethee_i", "a5"), "P6.5": ("promethee_ii", "a1"),
                     "P6.7": ("promethee_ii_veto", "a5"), "P6.8": ("exprom", "a3"), "P6.10": ("exprom_veto", "a5"),
                     "P6.11": ("promethee_ii_sd", "a4"), "P6.12": ("promethee_ii_sd", "a8"),
                     "P6.14": ("exprom_ii_sd", "a4"), "P6.16": ("exprom_ii_sd", "a2"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
@@ -146,6 +149,25 @@ def main():
         check("Dominacje stochastyczne" in out and "1,9259" not in out, "PROMETHEE II SD: edycja rozkładu zmienia wynik")
         shot("promethee")
 
+        # --- ELECTRE: destylacje, profile TRI, pary niejasne ---
+        page.select_option("#bk-method", "electre_iii"); page.select_option("#bk-example", "P5.13"); page.click("#bk-load")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("Destylacja zstępująca" in out and "4. a2, a3" in out and "3. a3" in out, "ELECTRE III: destylacje (przykład 5.13)")
+        page.select_option("#bk-method", "electre_tri"); page.select_option("#bk-example", "P5.15"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-b]").count() == 8, "ELECTRE TRI: profile w edytorze")
+        page.click("#bk-add-prof")
+        check(page.locator("#bk-editor input[data-b]").count() == 12, "ELECTRE TRI: dodanie profilu")
+        page.fill("#bk-editor input[data-b='2'][data-k='3']", "11"); page.fill("#bk-cats", "słabe | średnie | dobre | znakomite")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("znakomite" not in out.split("Wynik")[1].split("\n")[1] and "σ(a, b3)" in out, "ELECTRE TRI: trzeci profil i kategorie", out[:200])
+        page.select_option("#bk-method", "electre_i_sd"); page.select_option("#bk-example", "P5.19"); page.click("#bk-load")
+        page.select_option("#bk-options select[data-o=include_unclear]", "false"); page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("a5 → a3" not in out and "Pary niejasne" in out, "ELECTRE I SD: para niejasna tylko wskazana")
+        shot("electre")
+
         # --- dobór metody ---
         page.click("#sel-box summary")
         page.check("input[name=sel-data][value=qualitative]")
@@ -161,7 +183,12 @@ def main():
         page.check("#sel-dep"); page.click("#sel-run")
         first = page.locator("#sel-out tbody tr").first.inner_text()
         check("ANP" in first, "dobór metody: zależności między kryteriami → ANP", first.replace("\t", " | "))
-        page.uncheck("#sel-dep"); page.click("#sel-box summary")
+        page.uncheck("#sel-dep")
+        page.uncheck("input[name=sel-data][value=qualitative]"); page.check("input[name=sel-data][value=numeric]")
+        page.select_option("#sel-output", "sort"); page.click("#sel-run")
+        first = page.locator("#sel-out tbody tr").first.inner_text()
+        check("ELECTRE TRI" in first, "dobór metody: sortowanie → ELECTRE TRI", first.replace("\t", " | "))
+        page.select_option("#sel-output", "ranking"); page.click("#sel-box summary")
 
         # --- edycja zadania i błędne dane (TOPSIS) ---
         page.select_option("#bk-method", "topsis"); page.select_option("#bk-example", "P7.1"); page.click("#bk-load")
