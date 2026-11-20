@@ -140,6 +140,7 @@
             <label>Wynik: <select id="sel-output"><option value="ranking">pełny ranking</option><option value="scores">wynik liczbowy</option><option value="best">najlepszy wariant</option></select></label><br>
             <label>Kompensacja: <select id="sel-comp"><option value="full">pełna</option><option value="limited">ograniczona</option></select></label><br>
             <label><input type="checkbox" id="sel-ref"> znane poziomy aspiracji / rezerwacji</label><br>
+            <label><input type="checkbox" id="sel-dep"> kryteria wpływają na siebie (zależności)</label><br>
             <label>Wyjaśnienie wyniku innym: <select id="sel-explain"><option value="low">mało ważne</option><option value="medium" selected>średnio</option><option value="high">bardzo ważne</option></select></label><br>
             <label>Wiedza decydenta o metodach: <select id="sel-expertise"><option value="low">mała</option><option value="medium" selected>średnia</option><option value="high">duża</option></select></label><br>
             <label>Czas decydenta: <select id="sel-time"><option value="low">mało</option><option value="medium" selected>średnio</option><option value="high">dużo</option></select></label></div>
@@ -721,7 +722,7 @@ const CRIT_FIELDS = {
   saw: ["direction", "weight"], scoring: ["max_points"], fsaw: ["direction", "fuzzy_weight"],
   smart: ["direction", "swing", "scale"], smarter: ["direction", "rank", "scale"],
   topsis: ["direction", "weight"], fuzzy_topsis: ["direction", "weight"], vikor: ["direction", "weight"],
-  ahp: [], rembrandt: [], fuzzy_ahp: [], compromise: ["direction", "weight", "mandatory"],
+  ahp: [], rembrandt: [], fuzzy_ahp: [], anp: [], fuzzy_anp: [], compromise: ["direction", "weight", "mandatory"],
 };
 const FIELD_LABEL = { mandatory: "obowiązkowe", direction: "kierunek", weight: "waga", fuzzy_weight: "waga rozmyta (min; najl.; max)",
   swing: "punkty wagi (0–100)", rank: "ranga (1 = najważn.)", max_points: "maks. punktów", scale: "sposób oceny" };
@@ -734,7 +735,7 @@ const HINTS = {
   topsis: "Oceny liczbowe, kierunki i wagi.",
   fuzzy_topsis: "Oceny jako trójkątne liczby rozmyte: l; m; u (np. 2; 3; 5). Pojedyncza liczba x oznacza (x; x; x).",
   vikor: "Oceny liczbowe, kierunki i wagi. Wynik Q — im mniej, tym lepiej.",
-  ahp: "", rembrandt: "", fuzzy_ahp: "",
+  ahp: "", rembrandt: "", fuzzy_ahp: "", anp: "", fuzzy_anp: "",
   compromise: "Odległość L1 od rozwiązania idealnego (wzór 9.1). Kryterium obowiązkowe eliminuje wariant, który nie osiąga wartości idealnej.",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
@@ -761,11 +762,15 @@ function bookInit() {
   $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); });
   $("bk-load").addEventListener("click", () => bookLoadExample($("bk-example").value));
   $("bk-add-var").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
+    if (ANP_FAMILY.has(BK.method)) { let v = "a" + (p.variants.length + 1); while (p.variants.includes(v)) v += "'"; p.variants.push(v);
+      p.values.push(p.criteria.map(() => null)); if (p.subnets) for (const k of Object.keys(p.subnets)) if (p.subnets[k].priorities) p.subnets[k].priorities.push(null);
+      bookRender(); return; }
     p.variants.push("a" + (p.variants.length + 1)); p.values.push(p.criteria.map(() => ahpm ? null : 0));
     if (ahpm) for (const key of Object.keys(p.comparisons || {})) { const M = p.comparisons[key]; M.forEach((r) => r.push(null)); M.push(M.map(() => null).concat([BK.method === "rembrandt" ? 0 : 1])); M[M.length - 1].length = M.length; }
     bookRender(); });
   $("bk-add-crit").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
     let name = "f" + (p.criteria.length + 1); while (p.criteria.some((c) => c.name === name)) name += "'";
+    if (ANP_FAMILY.has(BK.method)) { if (p.subnets) return; p.criteria.push({ name }); bookRender(); return; }
     p.criteria.push(ahpm ? { name, source: "comparisons" } : { name, direction: "max" }); p.values.forEach((r) => r.push(ahpm ? null : 0));
     if (ahpm) { p.comparisons = p.comparisons || {}; p.comparisons[name] = blankMatrix(p.variants.length, BK.method);
       if (p.criteria_comparisons) { const M = p.criteria_comparisons; M.forEach((r) => r.push(null)); const row = M.map(() => null); row.push(BK.method === "rembrandt" ? 0 : 1); M.push(row); } }
@@ -798,6 +803,8 @@ function bookExamplesForMethod() {
 function bookLoadExample(id) {
   if (!id) {
     BK.problem = emptyProblem(); BK.options = {};
+    if (ANP_FAMILY.has(BK.method)) { const p = BK.problem; p.criteria = p.criteria.map((c) => ({ name: c.name }));
+      p.clusters = { "Kryteria": p.criteria.map((c) => c.name) }; p.influences = {}; }
     if (AHP_FAMILY.has(BK.method)) { const p = BK.problem; p.values = p.variants.map(() => p.criteria.map(() => null));
       p.criteria = p.criteria.map((c) => ({ name: c.name })); p.criteria_comparisons = blankMatrix(2, BK.method);
       p.comparisons = Object.fromEntries(p.criteria.map((c) => [c.name, blankMatrix(3, BK.method)])); }
@@ -827,6 +834,7 @@ function bookRender() {
   $("bk-method-info").innerHTML = `<b>${esc(info.title)}</b> — rozdz. ${esc(info.chapter)}. Potrzebne: ${esc(info.needs)}.`;
   $("bk-hint").textContent = HINTS[m] || "";
   if (AHP_FAMILY.has(m)) { ahpRender(); bookRenderOptions(); return; }
+  if (ANP_FAMILY.has(m)) { anpRender(); bookRenderOptions(); return; }
   let h = `<table><thead><tr><th class="l">Wariant \\ kryterium</th>` +
     p.criteria.map((c, k) => `<th><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:110px;font-weight:600">` +
       ` <button class="btn small" data-del-c="${k}" title="Usuń kryterium" style="padding:1px 6px">×</button></th>`).join("") + "</tr>";
@@ -896,6 +904,15 @@ function bookRenderOptions() {
     h += `<label>Poziomy α: <input type="text" data-o="alphas" value="${esc((o.alphas || [0, 0.2, 0.4, 0.6, 0.8, 1]).map(numStr).join(" "))}" style="width:180px"></label>`;
     h += `<label>Tolerancja d: <input type="text" data-o="d" value="${numStr(o.d ?? 1)}" style="width:60px"></label>`;
   }
+  if (ANP_FAMILY.has(m)) {
+    h += sel("method", "Wektor skali (porównania ostre):", [["eigen", "wektor własny"], ["saaty", "metoda Saaty'ego"], ["geometric", "średnie geometryczne"]], "eigen");
+    h += sel("limit", "Granica:", [["auto", "potęgi, przy cyklu Cesàro"], ["power", "potęgi (3.49)"], ["cesaro", "Cesàro (3.48)"]], "auto");
+    h += sel("sinks", "Ujścia:", [["zero", "kolumna zerowa (książka)"], ["loop", "pętla (hierarchia)"]], "zero");
+    if (BK.problem && BK.problem.subnets) {
+      h += sel("formula", "Formuła BOCR:", [["additive", "addytywna (3.52–3.53)"], ["multiplicative", "multiplikatywna (3.50)"], ["multiplicative_weighted", "multiplikatywna z wagami (3.51)"]], "additive");
+      h += sel("bocr_mode", "Priorytety podsieci:", [["ideal", "idealne (÷ największy)"], ["normal", "znormalizowane"]], "ideal");
+    }
+  }
   if (m === "compromise") {
     h += `<label>Wartości idealne (opcjonalnie): <input type="text" data-o="ideal" value="${esc((o.ideal || []).map(numStr).join(" "))}" placeholder="domyślnie najlepsze w danych" style="width:260px"></label>`;
   }
@@ -912,6 +929,7 @@ function bookRead() {
   const p = BK.problem, m = BK.method;
   const ed = $("bk-editor");
   if (AHP_FAMILY.has(m)) { ahpRead(); BK.options = bookReadOptions(); return; }
+  if (ANP_FAMILY.has(m)) { anpRead(); BK.options = bookReadOptions(); return; }
   ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
   ed.querySelectorAll("[data-i]").forEach((e) => { p.values[+e.dataset.i][+e.dataset.k] = parseCell(e.value); });
   ed.querySelectorAll("[data-c]").forEach((e) => {
@@ -948,7 +966,7 @@ function bookReadOptions() {
     else if (k === "gamma_criteria" || k === "gamma_variants") o[k] = Number(s);
     else if (k === "alphas") { if (s) o.alphas = parseNumbers(s); }
     else if (k === "ideal") { if (s) o.ideal = parseNumbers(s); }
-    else if (!(k === "weights" && s === "auto")) o[k] = s;
+    else if (!(k === "weights" && s === "auto") && !(k === "limit" && s === "auto") && !(k === "sinks" && s === "zero")) o[k] = s;
   });
   return o;
 }
@@ -967,7 +985,7 @@ function fmtCell(v) { return Array.isArray(v) ? "(" + v.map((x) => fmt(x)).join(
 
 function bookRun() {
   let req;
-  try { bookRead(); req = { method: BK.method, options: BK.options, problem: AHP_FAMILY.has(BK.method) ? ahpRequestProblem() : BK.problem }; }
+  try { bookRead(); req = { method: BK.method, options: BK.options, problem: AHP_FAMILY.has(BK.method) ? ahpRequestProblem() : ANP_FAMILY.has(BK.method) ? anpRequestProblem() : BK.problem }; }
   catch (e) { $("bk-out").style.display = "block"; $("bk-out").innerHTML = note("Błąd danych: " + e.message, "bad"); return; }
   const r = call("book_run", JSON.stringify(req));
   const out = $("bk-out"); out.style.display = "block";
@@ -994,6 +1012,7 @@ function bookRun() {
     else if (PER_VAR.has(k)) h += lab + table(["", ...V], [["", ...v.map(fmtCell)]], { raw: true }) + "</div>";
     else h += lab + table(["Wariant", ...C], v.map((row, i) => [V[i], ...row.map(fmtCell)]), { raw: true }) + "</div>";
   }
+  if (ANP_FAMILY.has(r.method)) { h += anpResultHtml(st, V); out.innerHTML = h; out.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (Array.isArray(st.matrices) && st.matrices.length) {
     h += "<h3>Macierze porównań</h3>";
     for (const mt of st.matrices) {
@@ -1201,12 +1220,259 @@ function ahpRequestProblem() {
   return p;
 }
 
+// ---------- edytor sieci ANP (rozdz. 3.4–3.5) ----------
+const ANP_FAMILY = new Set(["anp", "fuzzy_anp"]);
+const CHANG_JS = { "równoważne": [1, 1, 1], "umiarkowanie ważniejsze": [1, 3, 5], "silnie ważniejsze": [3, 5, 7],
+  "bardzo silnie ważniejsze": [5, 7, 9], "ekstremalnie ważniejsze": [7, 9, 9] };
+function anpKind() { return BK.method === "fuzzy_anp" ? "fuzzy_ahp" : "ahp"; }
+function anpCritNames(p) { return p.criteria.map((c) => typeof c === "string" ? c : c.name); }
+function ensureAnpData(p) {
+  p.criteria = p.criteria.map((c) => typeof c === "string" ? { name: c } : c);
+  const names = anpCritNames(p);
+  p.values = p.variants.map(() => names.map(() => null));
+  p.variants_cluster = p.variants_cluster || "Warianty";
+  let cl = p.clusters || {};
+  const vc = p.variants_cluster;
+  delete cl[vc];
+  for (const k of Object.keys(cl)) { cl[k] = cl[k].filter((e) => names.includes(e)); }
+  const listed = new Set(Object.values(cl).flat());
+  const missing = names.filter((n) => !listed.has(n));
+  if (missing.length) { const k = Object.keys(cl)[0] || "Kryteria"; cl[k] = (cl[k] || []).concat(missing); }
+  for (const k of Object.keys(cl)) if (!cl[k].length) delete cl[k];
+  p.clusters = cl;
+  const order = Object.values(cl).flat().concat(p.variants);
+  if (p.dependency_matrix) {
+    p.influences = {};
+    order.forEach((e, i) => { p.influences[e] = order.filter((_, j) => p.dependency_matrix[i] && p.dependency_matrix[i][j]); });
+    delete p.dependency_matrix;
+  }
+  p.influences = p.influences || {};
+  for (const k of Object.keys(p.influences)) { if (!order.includes(k)) delete p.influences[k]; else p.influences[k] = p.influences[k].filter((e) => order.includes(e)); }
+  p.comparisons = p.comparisons || {};
+  p.cluster_comparisons = p.cluster_comparisons || {};
+}
+function anpClusterOf(p) {
+  const out = {};
+  for (const [k, els] of Object.entries(p.clusters)) for (const e of els) out[e] = k;
+  for (const v of p.variants) out[v] = p.variants_cluster;
+  return out;
+}
+function anpClusterList(p) { return Object.keys(p.clusters).concat([p.variants_cluster]); }
+function anpElements(p) { return Object.values(p.clusters).flat().concat(p.variants); }
+function anpTargets(p, e, c) { const co = anpClusterOf(p); return anpElements(p).filter((x) => (p.influences[e] || []).includes(x) && co[x] === c); }
+function anpComparedClusters(p, c) {
+  const co = anpClusterOf(p), els = c === p.variants_cluster ? p.variants : p.clusters[c];
+  return anpClusterList(p).filter((d) => els.some((e) => (p.influences[e] || []).some((x) => co[x] === d)));
+}
+function fitMatrix(M, n) {
+  if (!(M && Array.isArray(M) && M.length === n && M.every((r) => Array.isArray(r) && r.length === n))) return blankMatrix(n, "ahp");
+  return M.map((row, i) => row.map((v, j) => (i !== j && (v === null || v === undefined) && M[j][i] !== null && M[j][i] !== undefined)
+    ? anpRecip(entryStr(M[j][i])) : v));
+}
+function anpRender() {
+  const p = BK.problem, kind = anpKind();
+  if (p.subnets) { bocrRender(); return; }
+  ensureAnpData(p);
+  const els = anpElements(p), co = anpClusterOf(p);
+  let h = `<div class="small muted" style="margin-bottom:8px">${esc(BK.method === "fuzzy_anp" ?
+    "Porównania komponentów w skali Changa: l; m; u (np. 3; 5; 7) albo nazwa oceny (tabl. 3.4). Porównania elementów: liczby 1–9 lub trójki." :
+    "Skala Saaty'ego 1–9 (np. 3, 1/5). Wpis nad przekątną uzupełnia odwrotność pod nią.")}</div>`;
+  h += `<div class="row small" style="margin-bottom:6px"><b>Warianty:</b> ${p.variants.map((v, i) =>
+    `<input type="text" data-v="${i}" value="${esc(v)}" style="width:80px"><button class="btn small" data-del-v="${i}" style="padding:1px 6px">×</button>`).join(" ")}
+    <label>komponent wariantów: <input type="text" id="anp-vc" value="${esc(p.variants_cluster)}" style="width:90px"></label></div>`;
+  h += `<h3 style="margin-top:6px">Kryteria i komponenty</h3><table><thead><tr><th class="l">Kryterium</th><th>komponent</th><th></th></tr></thead><tbody>`;
+  p.criteria.forEach((c, k) => {
+    h += `<tr><td class="l"><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:120px"></td>` +
+      `<td><input type="text" data-c="cluster" data-k="${k}" value="${esc(co[c.name])}" style="width:110px"></td>` +
+      `<td><button class="btn small" data-del-c="${k}" style="padding:1px 6px">×</button></td></tr>`;
+  });
+  h += "</tbody></table>";
+  h += `<h3>Macierz zależności</h3><div class="small muted">Zaznacz, gdy element z wiersza wpływa na element z kolumny (przykład 3.11).</div>`;
+  h += `<table><thead><tr><th></th>${els.map((e) => `<th class="small">${esc(e)}<div class="muted">${esc(co[e])}</div></th>`).join("")}</tr></thead><tbody>`;
+  els.forEach((e) => {
+    h += `<tr><th class="l">${esc(e)}</th>` + els.map((x) => x === e ? `<td class="diag c">—</td>` :
+      `<td class="c"><input type="checkbox" data-dep="${esc(e)}" data-to="${esc(x)}"${(p.influences[e] || []).includes(x) ? " checked" : ""}></td>`).join("") + "</tr>";
+  });
+  h += "</tbody></table>";
+  h += `<h3>Porównania komponentów</h3>`;
+  for (const c of anpClusterList(p)) {
+    const comp = anpComparedClusters(p, c);
+    const spec = p.cluster_comparisons[c];
+    if (comp.length === 0) continue;
+    if (comp.length === 1) { h += `<div class="small">Ze względu na <b>${esc(c)}</b>: tylko komponent ${esc(comp[0])} (waga 1).</div>`; continue; }
+    const M = spec && JSON.stringify(spec.clusters) === JSON.stringify(comp) ? fitMatrix(spec.matrix, comp.length) : blankMatrix(comp.length, "ahp");
+    h += `<div class="small" style="margin-top:6px">Ze względu na <b>${esc(c)}</b></div><div class="tablewrap">${matrixHtml("cl:" + c, comp, M, kind)}</div>`;
+  }
+  h += `<h3>Porównania elementów</h3>`;
+  let any = false;
+  for (const e of els) for (const c of anpClusterList(p)) {
+    const t = anpTargets(p, e, c);
+    if (t.length < 2) continue;
+    any = true;
+    const given = (p.comparisons[e] || {})[c];
+    const M = Array.isArray(given) && Array.isArray(given[0]) ? fitMatrix(given, t.length) : blankMatrix(t.length, "ahp");
+    h += `<div class="small" style="margin-top:6px">Ze względu na <b>${esc(e)}</b> — komponent ${esc(c)}</div><div class="tablewrap">${matrixHtml("el:" + e + "|" + c, t, M, kind)}</div>`;
+  }
+  if (!any) h += `<div class="small muted">Brak elementów wpływających na co najmniej dwa elementy jednego komponentu.</div>`;
+  $("bk-editor").innerHTML = h;
+  const ed = $("bk-editor");
+  ed.querySelectorAll("table[data-matrix] input").forEach((inp) => inp.addEventListener("input", () => {
+    const i = +inp.dataset.mi, j = +inp.dataset.mj;
+    const other = inp.closest("table").querySelector(`input[data-mi="${j}"][data-mj="${i}"]`);
+    if (other) other.value = anpRecip(inp.value);
+    anpCheck(inp.closest("table").dataset.matrix);
+  }));
+  ed.querySelectorAll("[data-dep]").forEach((cb) => cb.addEventListener("change", () => { anpRead(); bookRender(); }));
+  ed.querySelectorAll("[data-c=cluster]").forEach((e) => e.addEventListener("change", () => { anpRead(); bookRender(); }));
+  $("anp-vc").addEventListener("change", () => { anpRead(); bookRender(); });
+  ed.querySelectorAll("[data-del-c]").forEach((b) => b.addEventListener("click", () => {
+    anpRead(); const k = +b.dataset.delC; if (p.criteria.length <= 1) return;
+    const n = p.criteria[k].name; p.criteria.splice(k, 1); delete p.influences[n]; delete p.comparisons[n]; bookRender(); }));
+  ed.querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
+    anpRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
+    const n = p.variants[i]; p.variants.splice(i, 1); delete p.influences[n]; delete p.comparisons[n]; bookRender(); }));
+  if (BK.method === "fuzzy_anp") ed.querySelectorAll("table[data-matrix^='cl:'] input").forEach((i) => { i.style.width = "165px"; });
+  ed.querySelectorAll("table[data-matrix]").forEach((t) => anpCheck(t.dataset.matrix));
+}
+function anpParse(s) {
+  s = s.trim();
+  if (BK.method === "fuzzy_anp" && s.toLowerCase() in CHANG_JS) return s.toLowerCase();
+  return entryParse(s, anpKind());
+}
+function anpRecip(s) {
+  const t = s.trim().toLowerCase();
+  if (BK.method === "fuzzy_anp" && t in CHANG_JS) { const [l, m, u] = CHANG_JS[t]; return [1 / u, 1 / m, 1 / l].map(fracStr).join("; "); }
+  return recipStr(s, anpKind());
+}
+function anpReadMatrix(t) {
+  const n = t.querySelectorAll("tbody tr").length, M = blankMatrix(n, "ahp");
+  t.querySelectorAll("input").forEach((e) => { M[+e.dataset.mi][+e.dataset.mj] = anpParse(e.value); });
+  return M;
+}
+function anpCheck(id) {
+  const ed = $("bk-editor");
+  const t = ed.querySelector(`table[data-matrix="${CSS.escape(id)}"]`), out = ed.querySelector(`[data-check="${CSS.escape(id)}"]`);
+  if (!t || !out) return;
+  let M;
+  try { M = anpReadMatrix(t); } catch (e) { out.innerHTML = `<span style="color:var(--bad)">${esc(e.message)}</span>`; return; }
+  if (M.some((row, i) => row.some((v, j) => i !== j && v === null))) { out.textContent = "Uzupełnij wszystkie porównania (albo zostaw całą macierz pustą — wtedy równe wagi)."; return; }
+  if (M.some((row) => row.some((v) => Array.isArray(v) || (typeof v === "string" && v in CHANG_JS)))) { out.textContent = "Oceny rozmyte — wektor wyznacza analiza Changa po obliczeniu."; return; }
+  const r = call("book_matrix_check", JSON.stringify({ matrix: M, kind: "ahp", method: BK.options.method || "eigen" }));
+  if (r.error) { out.innerHTML = `<span style="color:var(--bad)">${esc(r.error)}</span>`; return; }
+  let s = "Wektor: " + r.w.map((x) => fmt(x, 3)).join("; ");
+  if (M.length > 2) s += ` · λmax = ${fmt(r.lambda_max, 3)} · γ = ${fmt(r.gamma, 3)} ` + (r.consistent ? "<b style='color:var(--ok)'>zgodne</b>" : "<b style='color:var(--bad)'>niezgodne (γ > 0,1)</b>");
+  out.innerHTML = s;
+}
+function anpRename(p, from, to) {
+  if (from === to) return;
+  for (const k of Object.keys(p.clusters)) p.clusters[k] = p.clusters[k].map((e) => e === from ? to : e);
+  if (from in p.influences) { p.influences[to] = p.influences[from]; delete p.influences[from]; }
+  for (const k of Object.keys(p.influences)) p.influences[k] = p.influences[k].map((e) => e === from ? to : e);
+  if (from in p.comparisons) { p.comparisons[to] = p.comparisons[from]; delete p.comparisons[from]; }
+}
+function anpRead() {
+  const p = BK.problem, ed = $("bk-editor");
+  if (p.subnets) { bocrRead(); return; }
+  ensureAnpData(p);
+  const isEmpty = (M) => M.every((row, i) => row.every((v, j) => i === j || v === null));
+  ed.querySelectorAll("table[data-matrix]").forEach((t) => {
+    const id = t.dataset.matrix, M = anpReadMatrix(t);
+    const labels = [...t.querySelectorAll("tbody th")].map((th) => th.textContent);
+    if (id.startsWith("cl:")) { const c = id.slice(3); if (isEmpty(M)) delete p.cluster_comparisons[c]; else p.cluster_comparisons[c] = { clusters: labels, matrix: M }; }
+    else { const [e, c] = id.slice(3).split("|"); p.comparisons[e] = p.comparisons[e] || {}; if (isEmpty(M)) delete p.comparisons[e][c]; else p.comparisons[e][c] = M; }
+  });
+  const deps = {};
+  ed.querySelectorAll("[data-dep]").forEach((cb) => { const e = cb.dataset.dep; deps[e] = deps[e] || []; if (cb.checked) deps[e].push(cb.dataset.to); });
+  if (Object.keys(deps).length) p.influences = deps;
+  const newClusters = {}, vcIn = $("anp-vc");
+  ed.querySelectorAll("[data-c=cluster]").forEach((e) => { const c = p.criteria[+e.dataset.k]; const k = e.value.trim() || "Kryteria"; (newClusters[k] = newClusters[k] || []).push(c.name); });
+  if (Object.keys(newClusters).length) p.clusters = newClusters;
+  if (vcIn) { const v = vcIn.value.trim() || "Warianty"; if (v !== p.variants_cluster) { for (const c of Object.keys(p.cluster_comparisons)) {
+      const s = p.cluster_comparisons[c]; s.clusters = s.clusters.map((x) => x === p.variants_cluster ? v : x); }
+    if (p.variants_cluster in p.cluster_comparisons) { p.cluster_comparisons[v] = p.cluster_comparisons[p.variants_cluster]; delete p.cluster_comparisons[p.variants_cluster]; }
+    for (const e of Object.keys(p.comparisons)) if (p.variants_cluster in p.comparisons[e]) { p.comparisons[e][v] = p.comparisons[e][p.variants_cluster]; delete p.comparisons[e][p.variants_cluster]; }
+    p.variants_cluster = v; } }
+  ed.querySelectorAll("[data-v]").forEach((e) => { const i = +e.dataset.v, s = e.value.trim(); if (s && s !== p.variants[i]) { anpRename(p, p.variants[i], s); p.variants[i] = s; } });
+  ed.querySelectorAll("[data-c=name]").forEach((e) => { const c = p.criteria[+e.dataset.k], s = e.value.trim(); if (s && s !== c.name) { anpRename(p, c.name, s); c.name = s; } });
+  // porównania komponentów niezgodne z bieżącą strukturą są pomijane
+  for (const c of Object.keys(p.cluster_comparisons)) if (!anpClusterList(p).includes(c)) delete p.cluster_comparisons[c];
+}
+function anpRequestProblem() {
+  const p = JSON.parse(JSON.stringify(BK.problem));
+  if (p.subnets) return p;
+  for (const e of Object.keys(p.comparisons)) {
+    for (const c of Object.keys(p.comparisons[e])) if (anpTargets(p, e, c).length < 2) delete p.comparisons[e][c];
+    if (!Object.keys(p.comparisons[e]).length) delete p.comparisons[e];
+  }
+  for (const c of Object.keys(p.cluster_comparisons)) {
+    const comp = anpComparedClusters(p, c);
+    if (JSON.stringify(p.cluster_comparisons[c].clusters) !== JSON.stringify(comp)) delete p.cluster_comparisons[c];
+  }
+  return p;
+}
+// struktura BOCR z gotowymi priorytetami podsieci
+function bocrRender() {
+  const p = BK.problem, keys = ["B", "O", "C", "R"], lab = { B: "korzyści B", O: "szanse O", C: "koszty C", R: "ryzyko R" };
+  const net = keys.some((k) => p.subnets[k] && !p.subnets[k].priorities);
+  let h = `<div class="small muted" style="margin-bottom:8px">Struktura BOCR (3.4.4): priorytety wariantów w podsieciach i wagi b, o, c, r.` +
+    (net ? " Zadanie zawiera pełne sieci podsystemów — edytuj je w JSON." : "") + `</div>`;
+  if (!net) {
+    h += `<table><thead><tr><th class="l">Wariant</th>${keys.map((k) => `<th>${lab[k]}</th>`).join("")}<th></th></tr></thead><tbody>`;
+    p.variants.forEach((v, i) => {
+      h += `<tr><td class="l"><input type="text" data-v="${i}" value="${esc(v)}" style="width:130px"></td>` +
+        keys.map((k) => `<td><input type="text" data-bocr="${k}" data-i="${i}" value="${esc(numStr(p.subnets[k] ? p.subnets[k].priorities[i] : ""))}" style="width:80px"></td>`).join("") +
+        `<td><button class="btn small" data-del-v="${i}" style="padding:1px 6px">×</button></td></tr>`;
+    });
+    h += `<tr><th class="l small">waga</th>${keys.map((k) => `<td><input type="text" data-bw="${k}" value="${esc(numStr((p.bocr_weights || {})[k] ?? ""))}" style="width:80px"></td>`).join("")}<td></td></tr></tbody></table>`;
+  }
+  $("bk-editor").innerHTML = h;
+  $("bk-editor").querySelectorAll("[data-del-v]").forEach((b) => b.addEventListener("click", () => {
+    bocrRead(); const i = +b.dataset.delV; if (p.variants.length <= 2) return;
+    p.variants.splice(i, 1); p.values.splice(i, 1); for (const k of keys) if (p.subnets[k] && p.subnets[k].priorities) p.subnets[k].priorities.splice(i, 1); bookRender(); }));
+}
+function bocrRead() {
+  const p = BK.problem, ed = $("bk-editor");
+  ed.querySelectorAll("[data-v]").forEach((e) => { p.variants[+e.dataset.v] = e.value.trim(); });
+  ed.querySelectorAll("[data-bocr]").forEach((e) => { const k = e.dataset.bocr, s = e.value.trim();
+    if (!s) { if (p.subnets[k]) p.subnets[k].priorities[+e.dataset.i] = null; return; }
+    p.subnets[k] = p.subnets[k] || { priorities: p.variants.map(() => null) }; p.subnets[k].priorities[+e.dataset.i] = parseNum(s); });
+  for (const k of Object.keys(p.subnets)) if (p.subnets[k].priorities && p.subnets[k].priorities.every((x) => x === null)) delete p.subnets[k];
+  const w = {}; ed.querySelectorAll("[data-bw]").forEach((e) => { const s = e.value.trim(); if (s) w[e.dataset.bw] = parseNum(s); });
+  if (ed.querySelector("[data-bw]")) { if (Object.keys(w).length) p.bocr_weights = w; else delete p.bocr_weights; }
+  p.criteria = []; p.values = p.variants.map(() => []);
+}
+function anpResultHtml(st, V) {
+  let h = "";
+  const sq = (title, M, rows, cols) => `<div class="small" style="margin-top:6px"><b>${esc(title)}</b></div><div class="tablewrap">` +
+    table(["", ...cols], M.map((r, i) => [rows[i], ...r.map((x) => fmt(x))]), { raw: true }) + "</div>";
+  if (st.subnets) {
+    const keys = Object.keys(st.subnets);
+    h += `<div class="small">Formuła: ${esc(st.formula)}; priorytety podsieci: ${st.bocr_mode === "ideal" ? "idealne (÷ największy)" : "znormalizowane"}` +
+      (st.bocr_weights ? `; wagi: ${keys.map((k) => `${k} = ${fmt(st.bocr_weights[k])}`).join(", ")}` : "") + "</div>";
+    h += `<div class="tablewrap">` + table(["Wariant", ...keys.map((k) => k + ` (${st.bocr_mode})`), "ocena syntetyczna", "idealna", "znormalizowana"],
+      V.map((v, i) => [v, ...keys.map((k) => fmt(st.subnets[k][st.bocr_mode][i])), fmt(st.raw[i]),
+        st.ideal ? fmt(st.ideal[i]) : "—", st.normal ? fmt(st.normal[i]) : "—"]), { raw: true }) + "</div>";
+    for (const k of keys) if (st.subnets[k].weighted_supermatrix) h += `<details><summary class="small">Podsieć ${esc(k)}</summary>${anpResultHtml(st.subnets[k], V)}</details>`;
+    return h;
+  }
+  const E = st.elements, CL = Object.keys(st.clusters);
+  h += `<div class="small">Wektor skali: ${esc(st.read)}; granica: ${st.limit_mode === "power" ? `potęga Ω̄^${st.limit_power} (3.49)` : "Cesàro (3.48)"}.</div>`;
+  h += `<div class="tablewrap">` + table(["Wariant", "priorytet graniczny", "znormalizowany", "idealny"],
+    V.map((v, i) => [v, fmt(st.raw[i]), fmt(st.normal[i]), fmt(st.ideal[i])]), { raw: true }) + "</div>";
+  h += sq("Macierz wag komponentów V (kolumna — komponent, ze względu na który porównujemy)", st.cluster_weights, CL, CL);
+  for (const c of st.cluster_comparisons) if (c.chang) h += `<div class="small muted">${esc(c.cluster)}: S̃ = ${c.chang.S.map((s) => "(" + s.map((x) => fmt(x, 3)).join("; ") + ")").join(", ")}; d = ${c.chang.d.map((x) => fmt(x)).join("; ")}</div>`;
+  h += sq("Supermacierz początkowa Ω", st.initial_supermatrix, E, E);
+  h += sq("Supermacierz ważona Ω̄ (po normalizacji kolumn)", st.weighted_supermatrix, E, E);
+  h += sq("Supermacierz graniczna G", st.limit_supermatrix, E, E);
+  return h;
+}
+
 // ---------- dobór metody ----------
 function selRun() {
   const data = [...document.querySelectorAll("input[name=sel-data]:checked")].map((e) => e.value);
   const prefs = [...document.querySelectorAll("input[name=sel-pref]:checked")].map((e) => e.value);
   const profile = { data, preferences: prefs, output: $("sel-output").value, compensation: $("sel-comp").value,
-    reference_levels: $("sel-ref").checked, explain: $("sel-explain").value, expertise: $("sel-expertise").value, time: $("sel-time").value };
+    reference_levels: $("sel-ref").checked, interdependence: $("sel-dep").checked, explain: $("sel-explain").value, expertise: $("sel-expertise").value, time: $("sel-time").value };
   const r = call("book_run", JSON.stringify({ method: "select_method", profile }));
   if (r.error) { $("sel-out").innerHTML = note(r.error, "bad"); return; }
   let h = "";

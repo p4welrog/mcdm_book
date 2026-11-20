@@ -93,7 +93,8 @@ def compromise(p: Problem, ideal: Optional[Sequence[float]] = None) -> Dict[str,
 #   numeric — oceny liczbowe; qualitative — oceny jakościowe (porównania parami lub ocena bezpośrednia 0–100);
 #   fuzzy — oceny lub porównania niepewne (trójki); stochastic — rozkłady prawdopodobieństwa;
 #   ranking — pełny ranking wszystkich wariantów; cardinal — wynik liczbowy z interpretacją odległości między
-#   wariantami; reference — punkty odniesienia (ideał, poziomy aspiracji i rezerwacji).
+#   wariantami; reference — punkty odniesienia (ideał, poziomy aspiracji i rezerwacji); dependence — zależności
+#   między kryteriami oraz między kryteriami i wariantami (sieć ANP).
 # Sposób pozyskania preferencji (natywny): weights, swing, ranks, pairwise, fuzzy_weights, points, dialog.
 # Oceny 0–10 (więcej = lepiej): transparency — łatwość zrozumienia i wyjaśnienia wyniku; knowledge — niska
 #   wymagana wiedza decydenta; effort — mały wysiłek i czas interakcji; noncomp — ograniczenie kompensacji;
@@ -125,6 +126,15 @@ METHOD_PROFILES: Dict[str, Dict[str, Any]] = {
     "fuzzy_ahp": {"title": "Rozmyty AHP (3.3)", "caps": {"numeric", "qualitative", "fuzzy", "ranking", "cardinal"},
                   "elicit": {"pairwise"},
                   "grades": {"transparency": 4, "knowledge": 4, "effort": 3, "noncomp": 2, "uncertainty": 8, "consistency": 8},
+                  "source": "własne"},
+    "anp": {"title": "ANP (3.4)", "caps": {"numeric", "qualitative", "ranking", "cardinal", "dependence"},
+            "elicit": {"pairwise"},
+            "grades": {"transparency": 3, "knowledge": 3, "effort": 2, "noncomp": 2, "uncertainty": 2, "consistency": 9},
+            "source": "własne"},
+    "fuzzy_anp": {"title": "Rozmyta ANP (3.5)",
+                  "caps": {"numeric", "qualitative", "fuzzy", "ranking", "cardinal", "dependence"},
+                  "elicit": {"pairwise"},
+                  "grades": {"transparency": 2, "knowledge": 2, "effort": 2, "noncomp": 2, "uncertainty": 7, "consistency": 6},
                   "source": "własne"},
     "topsis": {"title": "TOPSIS (7.1)", "caps": {"numeric", "ranking", "cardinal", "reference"}, "elicit": {"weights"},
                "grades": {"transparency": 6, "knowledge": 10, "effort": 10, "noncomp": 3, "uncertainty": 0, "consistency": 4},
@@ -172,6 +182,8 @@ PROFILE_FIELDS = {
     "explain": "low | medium | high — jak ważne jest wyjaśnienie wyniku innym (domyślnie medium)",
     "expertise": "low | medium | high — wiedza decydenta o metodach (domyślnie medium)",
     "time": "low | medium | high — czas decydenta na interakcję (domyślnie medium)",
+    "interdependence": "true, gdy kryteria (lub kryteria i warianty) wpływają na siebie i trzeba to uwzględnić "
+                       "(domyślnie false)",
 }
 
 
@@ -239,6 +251,9 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
                   "wymaga ocen w postaci rozkładów prawdopodobieństwa")
     if output in ("ranking", "scores"):
         mandatory("pełny ranking", lambda c: "ranking" in c["caps"], "nie daje pełnego rankingu wariantów")
+    if profile.get("interdependence"):
+        mandatory("zależności między kryteriami", lambda c: "dependence" in c["caps"],
+                  "zakłada niezależność kryteriów")
     if output == "scores":
         mandatory("wynik liczbowy", lambda c: "cardinal" in c["caps"], "nie daje wyniku liczbowego")
 
@@ -282,7 +297,8 @@ def select(profile: Dict[str, Any], scores: Optional[Dict[str, Dict[str, float]]
     res["method"] = "select_method"
     res["notes"] = [n for n in res["notes"] if not n.startswith("Wyeliminowane")]   # powody w elimination_reasons
     res["profile"] = {"data": sorted(data), "preferences": sorted(prefs), "output": output, "compensation": comp,
-                      **{k: profile[k] for k in ("reference_levels", "explain", "expertise", "time") if k in profile}}
+                      **{k: profile[k] for k in ("reference_levels", "explain", "expertise", "time", "interdependence")
+                         if k in profile}}
     res["titles"] = {mth: cat[mth]["title"] for mth in names}
     res["grade_sources"] = {mth: cat[mth]["source"] for mth in names}
     res["elimination_reasons"] = {m: reasons[m] for m in names if m in reasons}

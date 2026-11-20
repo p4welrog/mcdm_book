@@ -74,7 +74,8 @@ def main():
         # --- zakładka rankingu: przykłady z książki ---
         expected = {"P2.1": ("saw", "a3"), "P2.2": ("scoring", "a3"), "P2.3": ("fsaw", "a3"), "P2.7": ("smart", "a3, a4"),
                     "P2.11": ("smarter", "a4"), "P3.4": ("ahp", "a6"), "P3.7": ("rembrandt", "a1"),
-                    "P3.10": ("fuzzy_ahp", "a1"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
+                    "P3.10": ("fuzzy_ahp", "a1"), "P3.12": ("anp", "a1"), "P3.13": ("anp", "dostawca Y"),
+                    "P3.14": ("fuzzy_anp", "a1"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
                     "P7.4": ("vikor", "a3"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
         for ex, (meth, best) in expected.items():
             page.select_option("#bk-method", meth)
@@ -104,6 +105,29 @@ def main():
         page.click("#bk-run")
         check(page.locator("#bk-out .note.ok").inner_text().endswith("a1"), "AHP: zadanie wpisane od zera")
 
+        # --- edytor ANP: sieć z przykładu 3.12 ---
+        page.select_option("#bk-method", "anp"); page.select_option("#bk-example", "P3.12"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-dep]").count() == 30, "ANP: macierz zależności 6×6")
+        check(page.input_value("table[data-matrix='cl:AT'] input[data-mi='1'][data-mj='0']") == "3",
+              "ANP: odwrotność w porównaniach komponentów")
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("0,8084" in out and "0,2129" in out, "ANP: supermacierz graniczna (tabl. 17–18)")
+        page.uncheck("#bk-editor input[data-dep='a1'][data-to='f4']")
+        check(page.locator("#bk-editor input[data-dep]").count() == 30, "ANP: przebudowa po zmianie zależności")
+        page.click("#bk-run")
+        out2 = page.locator("#bk-out .note.ok").inner_text()
+        check(out2.startswith("Najlepszy") and "0,8084" not in page.locator("#bk-out").inner_text(),
+              "ANP: zmiana zależności zmienia wynik", out2)
+        sel = "table[data-matrix='el:f1|W'] input[data-mi='0'][data-mj='1']"
+        page.fill(sel, "1/5"); page.dispatch_event(sel, "input")
+        check(page.input_value("table[data-matrix='el:f1|W'] input[data-mi='1'][data-mj='0']") == "5",
+              "ANP: odwrotność w porównaniach elementów")
+        page.select_option("#bk-method", "fuzzy_anp"); page.select_option("#bk-example", "P3.14"); page.click("#bk-load")
+        page.click("#bk-run")
+        check("0,8285" in page.locator("#bk-out").inner_text(), "rozmyta ANP: wynik przykładu 3.14")
+        shot("anp")
+
         # --- dobór metody ---
         page.click("#sel-box summary")
         page.check("input[name=sel-data][value=qualitative]")
@@ -115,6 +139,11 @@ def main():
         shot("select")
         page.locator("#sel-out [data-use]").first.click()
         check(page.input_value("#bk-method") == "ahp", "dobór metody: przycisk „Użyj”")
+        page.click("#sel-box summary")
+        page.check("#sel-dep"); page.click("#sel-run")
+        first = page.locator("#sel-out tbody tr").first.inner_text()
+        check("ANP" in first, "dobór metody: zależności między kryteriami → ANP", first.replace("\t", " | "))
+        page.uncheck("#sel-dep"); page.click("#sel-box summary")
 
         # --- edycja zadania i błędne dane (TOPSIS) ---
         page.select_option("#bk-method", "topsis"); page.select_option("#bk-example", "P7.1"); page.click("#bk-load")
