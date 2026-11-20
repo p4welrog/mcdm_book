@@ -54,6 +54,9 @@ def test_select_eliminations_and_reasons():
     r = sel(data=["qualitative"])
     assert "saw" not in r["ranking"] and "nie obsługuje ocen jakościowych" in r["elimination_reasons"]["saw"]
     r = sel(data=["stochastic"])
+    assert set(r["ranking"]) == {"promethee_ii_sd", "exprom_ii_sd"}
+    assert sel(data=["stochastic"], output="scores")["ranking"] == ["exprom_ii_sd"]
+    r = sel(data=["stochastic"], interdependence=True)
     assert r["ranking"] == [] and any("Żadna metoda" in n for n in r["notes"])
 
 

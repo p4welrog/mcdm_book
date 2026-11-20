@@ -49,6 +49,47 @@ _CRIT_312 = [{"name": "f1", "label": "adekwatność do warunków lokalnych"}, {"
 _BOCR_313 = {"B": [0.932695, 0.422383, 0.978943, 1.0], "O": [0.287789, 1.0, 0.279291, 0.406939],
              "C": [0.814394, 1.0, 0.300590, 0.394819], "R": [0.502724, 0.788117, 0.590836, 1.0]}
 
+# --- rozdz. 6 ---
+_X_67 = [[40, 10, 3], [27, 45, 30], [2, 38, 52], [44, 29, 6], [18, 37, 44]]
+_C_67 = [{"name": "f1", "weight": 0.5, "q": 5, "p": 10, "v": 12}, {"name": "f2", "weight": 0.2, "q": 5, "p": 8, "v": 11},
+         {"name": "f3", "weight": 0.3, "q": 5, "p": 11, "v": 13}]
+_X_65 = [[6, 10, 23, 99, 1.25, 250], [4, 11, 22, 105, 3.5, 248], [4, 13, 25, 95, 2.5, 249], [5, 12, 20, 74, 1.75, 252]]
+_C_65 = [{"name": "f1", "weight": 0.2, "type": 1}, {"name": "f2", "weight": 0.1, "type": 2, "q": 2},
+         {"name": "f3", "weight": 0.3, "type": 3, "p": 4}, {"name": "f4", "weight": 0.1, "type": 4, "q": 5, "p": 10},
+         {"name": "f5", "weight": 0.1, "type": 5, "q": 1, "p": 2}, {"name": "f6", "weight": 0.2, "type": 6, "s": 1}]
+
+
+def _dist_611():
+    x = ([0, 1, 2, 3, 4], [7, 7.5, 8, 8.5], [400, 450, 500, 550, 600])
+    P = ([[.6, .24, .1, .04, .02], [.6, .2, .1, .05, .05], [.7, .1, .1, .1, 0], [.4, .15, .15, .15, .15],
+          [.5, .15, .15, .1, .1]],
+         [[.24, .48, .24, .04], [.2, .4, .3, .1], [.2, .35, .3, .15], [.3, .5, .15, .05], [.15, .5, .25, .1]],
+         [[.1, .1, .4, .2, .2], [.2, .1, 0, .5, .2], [.1, .15, .35, .25, .15], [.05, .1, .45, .25, .15],
+          [.15, .35, .25, .2, .05]])
+    return [[{"values": x[k], "probs": P[k][i]} for k in range(3)] for i in range(5)]
+
+
+_C_611 = [{"name": "f1", "weight": 0.40, "p": 0.5, "v": 0.8}, {"name": "f2", "weight": 0.35, "p": 0.25, "v": 0.75},
+          {"name": "f3", "weight": 0.25, "p": 10, "v": 35}]
+
+
+def _obs(scores):
+    """scores[k][osoba][wariant] → oceny wariantów jako obserwacje (rozkłady empiryczne)."""
+    m = len(scores[0][0])
+    return [[{"obs": [row[i] for row in scores[k]]} for k in range(len(scores))] for i in range(m)]
+
+
+_OBS_612 = [[[1, 7, 6, 1, 8, 4, 1, 10], [8, 6, 5, 7, 6, 8, 6, 10], [2, 9, 5, 7, 5, 7, 5, 10]],
+            [[5, 7, 5, 7, 7, 3, 5, 5], [7, 5, 5, 6, 5, 6, 2, 10], [6, 7, 8, 6, 4, 5, 4, 10]],
+            [[8, 8, 7, 8, 8, 2, 7, 3], [7, 9, 8, 8, 8, 8, 6, 4], [7, 9, 8, 9, 8, 5, 7, 10]]]
+_OBS_616 = [[[3, 5, 4, 7, 6, 7, 6, 5], [5, 7, 0, 6, 4, 6, 3, 3], [8, 9, 8, 9, 9, 10, 10, 10], [3, 10, 5, 9, 10, 10, 7, 5],
+             [3, 8, 2, 5, 8, 9, 5, 4]],
+            [[3, 7, 2, 7, 4, 3, 6, 5], [5, 8, 6, 7, 3, 6, 3, 3], [7, 10, 9, 10, 9, 8, 10, 10], [4, 10, 9, 9, 2, 10, 7, 10],
+             [4, 10, 5, 9, 5, 7, 7, 4]],
+            [[6, 7, 3, 3, 7, 2, 3, 6], [6, 8, 2, 2, 6, 4, 5, 4], [8, 10, 6, 10, 10, 10, 10, 10], [10, 10, 2, 0, 5, 10, 10, 4],
+             [5, 8, 4, 4, 9, 9, 9, 7]]]
+_V8 = [f"a{i}" for i in range(1, 9)]
+
 EXAMPLES: Dict[str, Dict[str, Any]] = {
     "P2.1": {"title": "Przykład 2.1 — SAW, wybór konta w banku", "method": "saw",
              "options": {"normalization": "minmax"}, "problem": _banks("Wybór konta osobistego")},
@@ -179,6 +220,54 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                               "AS": {"clusters": ["AT", "W"], "matrix": [[1, "silnie ważniejsze"], [None, 1]]},
                               "AT": {"clusters": ["AS", "W"], "matrix": [[1, None], ["umiarkowanie ważniejsze", 1]]},
                               "W": {"clusters": ["AS", "AT"], "matrix": [[1, "równoważne"], [None, 1]]}}}},
+    "P6.2": {"title": "Przykład 6.2 — PROMETHEE I (kryteria typów 5, 4, 3, 1)", "method": "promethee_i", "options": {},
+             "problem": {"name": "Przykład 6.2", "variants": [f"a{i}" for i in range(1, 8)],
+                         "criteria": [{"name": "f1", "weight": 0.4, "type": 5, "q": 5, "p": 10},
+                                      {"name": "f2", "weight": 0.1, "type": 4, "q": 3, "p": 5},
+                                      {"name": "f3", "weight": 0.3, "type": 3, "p": 2},
+                                      {"name": "f4", "weight": 0.2, "type": 1}],
+                         "values": [[10, 5, 3, 0], [65, 0, 1, 1], [25, 15, 2, 1], [9, 2, 3, 0], [200, 0, 2, 1],
+                                    [74, 1, 1, 0], [36, 2, 1, 1]]}},
+    "P6.4": {"title": "Przykład 6.4 — PROMETHEE II (kryteria typu 1)", "method": "promethee_ii", "options": {},
+             "problem": {"name": "Przykład 6.4", "variants": [f"a{i}" for i in range(1, 6)],
+                         "criteria": [{"name": c["name"], "weight": c["weight"]} for c in _C_67], "values": _X_67}},
+    "P6.5": {"title": "Przykład 6.5 — PROMETHEE II, kryteria wszystkich sześciu typów", "method": "promethee_ii",
+             "options": {},
+             "problem": {"name": "Projekty rozwoju regionalnego", "variants": ["a1", "a2", "a3", "a4"],
+                         "criteria": _C_65, "values": _X_65}},
+    "P6.7": {"title": "Przykład 6.7 — PROMETHEE II z progami weta", "method": "promethee_ii_veto", "options": {},
+             "problem": {"name": "Przykład 6.7", "variants": [f"a{i}" for i in range(1, 6)], "criteria": _C_67,
+                         "values": _X_67}},
+    "P6.8": {"title": "Przykład 6.8 — EXPROM II", "method": "exprom", "options": {},
+             "problem": {"name": "Przykład 6.8", "variants": ["a1", "a2", "a3", "a4"],
+                         "criteria": [{"name": "f1", "weight": 0.6}, {"name": "f2", "weight": 0.1},
+                                      {"name": "f3", "weight": 0.3}],
+                         "values": [[30, 34, 4], [4, 5, 39], [40, 18, 33], [44, 20, 3]]}},
+    "P6.10": {"title": "Przykład 6.10 — EXPROM II z progami weta", "method": "exprom_veto", "options": {},
+              "problem": {"name": "Przykład 6.10", "variants": [f"a{i}" for i in range(1, 6)], "criteria": _C_67,
+                          "values": _X_67}},
+    "P6.11": {"title": "Przykład 6.11 — PROMETHEE II z progami weta i dominacjami stochastycznymi",
+              "method": "promethee_ii_sd", "options": {"risk": "DARA"},
+              "problem": {"name": "Przykład 6.11", "variants": [f"a{i}" for i in range(1, 6)], "criteria": _C_611,
+                          "values": _dist_611()}},
+    "P6.12": {"title": "Przykład 6.12 — PROMETHEE II z wetem i porządkowymi (prawie) dominacjami stochastycznymi",
+              "method": "promethee_ii_sd", "options": {"dominances": ["FSD", "SSD", "AFSD:0.333", "ASSD:0.2"]},
+              "problem": {"name": "Ocena 8 wariantów przez 3 osoby", "variants": _V8,
+                          "criteria": [{"name": "f1", "weight": 0.27, "q": 1, "p": 3, "v": 6},
+                                       {"name": "f2", "weight": 0.39, "q": 1, "p": 3, "v": 5},
+                                       {"name": "f3", "weight": 0.34, "q": 2, "p": 4, "v": 7}],
+                          "values": _obs(_OBS_612)}},
+    "P6.14": {"title": "Przykład 6.14 — EXPROM II z progami weta i dominacjami stochastycznymi",
+              "method": "exprom_ii_sd", "options": {"risk": "DARA"},
+              "problem": {"name": "Przykład 6.14", "variants": [f"a{i}" for i in range(1, 6)], "criteria": _C_611,
+                          "values": _dist_611()}},
+    "P6.16": {"title": "Przykład 6.16 — EXPROM II z wetem i porządkowymi (prawie) dominacjami stochastycznymi",
+              "method": "exprom_ii_sd", "options": {"dominances": ["FSD", "SSD", "AFSD:0.2", "ASSD:0.125"]},
+              "problem": {"name": "Ocena 8 wariantów przez 5 osób", "variants": _V8,
+                          "criteria": [{"name": "f1", "weight": 0.4, "q": 1, "p": 3, "v": 6},
+                                       {"name": "f2", "weight": 0.1, "q": 2, "p": 4, "v": 8},
+                                       {"name": "f3", "weight": 0.5, "q": 1, "p": 2, "v": 5}],
+                          "values": _obs(_OBS_616)}},
     "P7.1": {"title": "Przykład 7.1 — TOPSIS", "method": "topsis", "options": {"metric": 2},
              "problem": {"name": "Przykład 7.1", "variants": [f"a{i}" for i in range(1, 10)],
                          "criteria": [{"name": f"f{k + 1}", "direction": "max", "weight": w} for k, w in enumerate(_W7)],
