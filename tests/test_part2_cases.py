@@ -150,3 +150,27 @@ def test_r10_insdecm_book_sets(r10):
     P4 = res.iterations[3].P.as_dict()
     assert P4[(2, 12)] == (-28.5, -24.0) and P4[(3, 12)] == (-39.0, -25.5)
     assert P4[(4, 12)] == (-28.5, -18.0) and P4[(5, 12)] == (29.0, 39.5)
+
+
+def test_r12_bipolar_parameters():
+    """Rozdz. 12: τ z decyli R12.2 = 75, 76, 57, 72, 55, 85, 62 (druk: τ6 = 84), ρ = 0,69, wagi tabl. 12.6
+    (f6: 0,18 zamiast 0,17); progi weta = 3. decyl zwycięzców z danych (druk: decyle tabl. 12.3)."""
+    r = run("R12")
+    st = r["steps"]
+    assert st["mu"] == [75, 76, 57, 72, 55, 85, 62]
+    assert round(st["omega"], 2) == 0.69
+    assert [round(w, 2) for w in st["weights"]] == [0.16, 0.16, 0.12, 0.15, 0.11, 0.18, 0.13]
+    v = [-x for x in st["v"]]
+    v[2] = -v[2]                                                         # ROE maksymalizowane
+    assert v == pytest.approx([14.770, 1.3755, 0.0626, 0.7423, 0.4725, 0.8379, 0.0435], abs=1e-3)
+
+
+def test_r12_bipolar_ranking_differs_from_cd():
+    """R12.4 (program autora) nie odtwarza się z R12.1–R12.2: mianowniki 150 i 195 zamiast 149 i 194,
+    kategoria S1 bez OLAWA; zgodna pierwsza pozycja (ELZAB) i kategoria S1 dla ELZAB, JELFA."""
+    r = run("R12")
+    st = r["steps"]
+    assert r["ranking"][0] == "ELZAB"
+    s1 = [v for v, c in zip(r["variants"], st["S_category"]) if c == "S1"]
+    assert s1 == ["ELZAB", "JELFA", "OLAWA"]
+    assert round(st["d_S"][r["variants"].index("ELZAB")] * 149) == 103   # R12.4: 0,78 = 117/150

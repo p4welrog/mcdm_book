@@ -188,6 +188,7 @@ _OBS_616 = [[[3, 5, 4, 7, 6, 7, 6, 5], [5, 7, 0, 6, 4, 6, 3, 3], [8, 9, 8, 9, 9,
 _V8 = [f"a{i}" for i in range(1, 9)]
 
 # --- Część II: zastosowania (rozdz. 9–16) ---
+from .data_r12 import CRITERIA as _R12_C, COMPANIES as _R12_A, WINNERS as _R12_D, LOSERS as _R12_Z
 _C_R95 = [{"name": f"f{k + 1}", "weight": w, "q": q, "p": pp, "v": v} for k, (w, q, pp, v) in enumerate(
     [(0.23, 1, 3.5, 7), (0.14, 0, 3, 11), (0.23, 0.5, 2, 8), (0.23, 1, 3, 8), (0.02, 1, 3, 11), (0.04, 1.5, 3, 11),
      (0.05, 1.5, 3.5, 11), (0.01, 3, 5, 11), (0.05, 0, 2, 7)])]
@@ -568,6 +569,13 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                         "comparisons": _anp_from_supermatrix(_R11_M, _R11_EL, _R11_CL, ["IFS", "IM5", "SAP"]),
                         "cluster_weights": [[0.2542, 0.4539, 0.1728, 0.5609], [0.5790, 0.3531, 0.1301, 0.1898],
                                             [0.0808, 0.0752, 0.4331, 0.1783], [0.0860, 0.1178, 0.2640, 0.0710]]}},
+    "R12": {"title": "Rozdz. 12 — BIPOLAR (7.5.5), selekcja 55 akcji; zbiory referencyjne R12.2 (149 / 194)",
+            "method": "bipolar",
+            "options": {"weights": "deciles", "veto_decile": 3, "s": 0.51, "position": "counts"},
+            "problem": {"name": "Selekcja akcji do portfela (styczeń 2004)", "variants": [n for n, _ in _R12_A],
+                        "criteria": [{"name": c, "direction": "max" if c == "ROE" else "min"} for c in _R12_C],
+                        "values": [v for _, v in _R12_A], "good": [v for _, v in _R12_D],
+                        "bad": [v for _, v in _R12_Z]}},
     "R15": {"title": "Rozdz. 15 — PROMETHEE II, premiowy system motywacji (51 pracowników, tabl. 15.4)",
             "method": "promethee_ii", "options": {},
             "problem": {"name": "Pracownicy call center po selekcji", "variants": [r[0] for r in _R15],
