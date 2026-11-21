@@ -126,3 +126,7 @@ Mapę kotwic (`web/book_anchors.json`: `eq`, `tab`, `rys`, `prz`, `zb`, `sec`, `
 ### Wynik pakietu a druk
 
 Po wczytaniu przykładu z książki zakładka rankingu pokazuje panel zgodności z drukiem: status (zgodny / z zastrzeżeniami / rozbieżności), najważniejsze zgodne wartości, różnice z przyczyną (błąd druku, inne dane, konwencja) i link do sekcji erraty w transkrypcji. Treść: `mcdm_book/print_checks.py` (wpis dla każdego przykładu z `examples.listing()`, sprawdzane w `tests/test_print_checks.py`); wartości liczbowe pochodzą z testów pakietu i erraty transkrypcji.
+
+### Pomoc do metod
+
+Pod opisem wybranej metody rozwija się „Jak używać tej metody”: kiedy ją stosować, jak czytać wynik i na co uważać (np. kolejność [α, β] w progach ELECTRE i PROMETHEE, porządek częściowy, opcje odtwarzające druk). Treść: `mcdm_book/method_help.py` (wpis dla każdej metody z `api.methods()` poza `select_method`, sprawdzane w `tests/test_method_help.py`).

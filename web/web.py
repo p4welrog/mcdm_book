@@ -313,6 +313,11 @@ def book_example(name: str) -> str:
     return _out(book_ex.get(name))
 
 
+def book_method_help(name: str) -> str:
+    from mcdm_book import method_help
+    return _out(method_help.get(name))
+
+
 def book_print_check(name: str) -> str:
     from mcdm_book import print_checks
     return _out(print_checks.get(name))

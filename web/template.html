@@ -94,6 +94,9 @@
   .pc li::before { position: absolute; left: 0; width: 18px; text-align: center; font-weight: 700; }
   .pc li.ok::before { content: "✓"; color: var(--ok); } .pc li.diff::before { content: "≠"; color: var(--bad); }
   .pc li.conv::before { content: "≈"; color: var(--warn); } .pc li.info::before { content: "i"; color: var(--muted); font-style: italic; }
+  .mh { margin-top: 6px; color: var(--ink); }
+  .mh summary { cursor: pointer; color: var(--accent); }
+  .mh > div { margin: 4px 0; } .mh ul { margin: 4px 0 4px 18px; padding: 0; } .mh li { margin: 2px 0; }
   a.bk { color: inherit; text-decoration: underline dotted var(--accent); text-underline-offset: 2px; }
   a.bk:hover { color: var(--accent); text-decoration-style: solid; }
 </style>
@@ -1028,7 +1031,13 @@ function scaleStr(sc) {
 function bookRender() {
   const p = BK.problem, m = BK.method, fields = CRIT_FIELDS[m];
   const info = BK.methods[m];
-  $("bk-method-info").innerHTML = `<b>${esc(info.title)}</b> — rozdz. ${esc(info.chapter)}. Potrzebne: ${esc(info.needs)}.`;
+  const mh = call("book_method_help", m);
+  const mhOpen = $("bk-help") ? $("bk-help").open : false;
+  $("bk-method-info").innerHTML = `<b>${esc(info.title)}</b> — rozdz. ${esc(info.chapter)}. Potrzebne: ${esc(info.needs)}.` +
+    (mh ? `<details id="bk-help" class="mh"${mhOpen ? " open" : ""}><summary>Jak używać tej metody</summary>` +
+      `<div><b>Kiedy:</b> ${esc(mh.use)}</div><div><b>Wynik:</b> ${esc(mh.result)}</div>` +
+      (mh.tips.length ? `<ul>${mh.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "") +
+      `<div class="muted">Wzory i przykłady: rozdz. ${esc(info.chapter)} książki.</div></details>` : "");
   $("bk-hint").textContent = HINTS[m] || "";
   if (AHP_FAMILY.has(m)) { ahpRender(); bookRenderOptions(); return; }
   if (ANP_FAMILY.has(m)) { anpRender(); bookRenderOptions(); return; }

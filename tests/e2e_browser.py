@@ -153,6 +153,9 @@ def main():
         check(any(h.startswith("cd6-P6-7 ") for h in hrefs) and any(h.startswith("r6-") for h in hrefs),
               "odsyłacze do transkrypcji: przykład 6.7 i rozdz. 6", f"{len(hrefs)} linków")
         check(not page.locator("#bk-options a.bk, #bk-editor a.bk, table a.bk").count(), "odsyłacze: bez linków w polach i tablicach")
+        page.click("#bk-help summary")
+        hp = page.locator("#bk-help")
+        check(hp.get_attribute("open") is not None and "Niezgodność: jak w przykładach 6.7 i 6.10" in hp.inner_text(), "pomoc do metody: PROMETHEE II z wetem")
         pc = page.locator("#bk-print")
         check(pc.is_visible() and "rozbieżności z drukiem" in pc.inner_text() and "(6.20)" in pc.inner_text()
               and pc.locator("a[href*='#errata-h-Przyklady-CD-do-rozdz-6']").count() == 1, "panel „wynik pakietu a druk”: P6.7")
