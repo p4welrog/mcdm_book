@@ -1,0 +1,278 @@
+{
+ "P2.1": {
+  "method": "saw",
+  "title": "Przykład 2.1 — SAW, wybór konta w banku"
+ },
+ "P2.2": {
+  "method": "scoring",
+  "title": "Przykład 2.2 — metoda scoringowa (punkty przyznane przez studenta)"
+ },
+ "P2.3": {
+  "method": "fsaw",
+  "title": "Przykład 2.3 — FSAW, wagi rozmyte"
+ },
+ "P2.7": {
+  "method": "smart",
+  "title": "Przykład 2.7 — SMART (unitaryzacja, ocena bezpośrednia, funkcja wartości)"
+ },
+ "P2.11": {
+  "method": "smarter",
+  "title": "Przykład 2.11 — SMARTER (liniowe funkcje wartości, wagi ROC)"
+ },
+ "P3.4": {
+  "method": "ahp",
+  "title": "Przykład 3.4 — AHP (dwa kryteria z porównań, trzecie z wartości)"
+ },
+ "P3.7": {
+  "method": "rembrandt",
+  "title": "Przykład 3.7 — REMBRANDT (γ = ln √2 także dla wariantów, jak w przykładzie)"
+ },
+ "P3.10": {
+  "method": "fuzzy_ahp",
+  "title": "Przykład 3.10 — rozmyty AHP (Mikhailov), dwa warianty, ocena (1, 3, 4)"
+ },
+ "R9.2": {
+  "method": "compromise",
+  "title": "Zbiór R9.2 — model Gershona: wybór metody do rankingu wniosków o dofinansowanie z UE"
+ },
+ "R9.3": {
+  "method": "compromise",
+  "title": "Zbiór R9.3 — procedura Tecle'a: wybór metody do rankingu wniosków o dofinansowanie z UE"
+ },
+ "P3.12": {
+  "method": "anp",
+  "title": "Przykład 3.12 — ANP, wybór projektu inwestycyjnego"
+ },
+ "P3.13": {
+  "method": "anp",
+  "title": "Przykład 3.13 — ANP, synteza BOCR (priorytety podsieci z Super Decisions)"
+ },
+ "P3.14": {
+  "method": "fuzzy_anp",
+  "title": "Przykład 3.14 — rozmyta ANP (porównania komponentów w skali Changa)"
+ },
+ "P4.2": {
+  "method": "macbeth_scale",
+  "title": "Przykład 4.2 — MACBETH: wagi kryteriów z ocen różnic istotności"
+ },
+ "P4.3": {
+  "method": "macbeth",
+  "title": "Przykład 4.3 — MACBETH (dane z programu M-MACBETH; przekątna i kolor jako gotowe oceny)"
+ },
+ "P4.5": {
+  "method": "zapros",
+  "title": "Przykład 4.5 — ZAPROS: porównanie dwóch kandydatów przez JOS"
+ },
+ "P4.6": {
+  "method": "zapros",
+  "title": "Przykład 4.6 — ZAPROS (JOS z porównań wektorów, porządek częściowy)"
+ },
+ "P4.7": {
+  "method": "zapros_iii",
+  "title": "Przykład 4.7 — ZAPROS III: porównanie par kandydatów (JSQV → JSCV)"
+ },
+ "P4.8": {
+  "method": "zapros_iii",
+  "title": "Przykład 4.8 — ZAPROS III (porównania wariacji, FIQ, rangi)"
+ },
+ "P5.10": {
+  "method": "electre_i",
+  "title": "Przykład 5.10 — ELECTRE I"
+ },
+ "P5.11": {
+  "method": "electre_iv",
+  "title": "Przykład 5.11 — ELECTRE Iv (progi weta kryteriów)"
+ },
+ "P5.12": {
+  "method": "electre_is",
+  "title": "Przykład 5.12 — ELECTRE Is"
+ },
+ "P5.13": {
+  "method": "electre_iii",
+  "title": "Przykład 5.13 — ELECTRE III (destylacje, ranking końcowy)"
+ },
+ "P5.14": {
+  "method": "electre_iii",
+  "title": "Przykład 5.14 — ELECTRE III (dane programu ELECTRE III/IV)"
+ },
+ "P5.15": {
+  "method": "electre_tri",
+  "title": "Przykład 5.15 — ELECTRE TRI, procedura pesymistyczna"
+ },
+ "P5.16": {
+  "method": "electre_tri",
+  "title": "Przykład 5.16 — ELECTRE TRI, procedura optymistyczna"
+ },
+ "P5.19": {
+  "method": "electre_i_sd",
+  "title": "Przykład 5.19 — ELECTRE I z dominacjami stochastycznymi (s = 0,75, para niejasna włączona)"
+ },
+ "P5.20": {
+  "method": "electre_iii_sd",
+  "title": "Przykład 5.20 — ELECTRE III z dominacjami stochastycznymi"
+ },
+ "P6.2": {
+  "method": "promethee_i",
+  "title": "Przykład 6.2 — PROMETHEE I (kryteria typów 5, 4, 3, 1)"
+ },
+ "P6.4": {
+  "method": "promethee_ii",
+  "title": "Przykład 6.4 — PROMETHEE II (kryteria typu 1)"
+ },
+ "P6.5": {
+  "method": "promethee_ii",
+  "title": "Przykład 6.5 — PROMETHEE II, kryteria wszystkich sześciu typów"
+ },
+ "P6.7": {
+  "method": "promethee_ii_veto",
+  "title": "Przykład 6.7 — PROMETHEE II z progami weta"
+ },
+ "P6.8": {
+  "method": "exprom",
+  "title": "Przykład 6.8 — EXPROM II"
+ },
+ "P6.10": {
+  "method": "exprom_veto",
+  "title": "Przykład 6.10 — EXPROM II z progami weta"
+ },
+ "P6.11": {
+  "method": "promethee_ii_sd",
+  "title": "Przykład 6.11 — PROMETHEE II z progami weta i dominacjami stochastycznymi"
+ },
+ "P6.12": {
+  "method": "promethee_ii_sd",
+  "title": "Przykład 6.12 — PROMETHEE II z wetem i porządkowymi (prawie) dominacjami stochastycznymi"
+ },
+ "P6.14": {
+  "method": "exprom_ii_sd",
+  "title": "Przykład 6.14 — EXPROM II z progami weta i dominacjami stochastycznymi"
+ },
+ "P6.16": {
+  "method": "exprom_ii_sd",
+  "title": "Przykład 6.16 — EXPROM II z wetem i porządkowymi (prawie) dominacjami stochastycznymi"
+ },
+ "P7.1": {
+  "method": "topsis",
+  "title": "Przykład 7.1 — TOPSIS"
+ },
+ "P7.3": {
+  "method": "fuzzy_topsis",
+  "title": "Przykład 7.3 — rozmyty TOPSIS"
+ },
+ "P7.4": {
+  "method": "vikor",
+  "title": "Przykład 7.4 — VIKOR, wybór konta w banku"
+ },
+ "P7.5": {
+  "method": "dematel",
+  "title": "Przykład 7.5 — DEMATEL (aspekty renowacji organów)"
+ },
+ "P7.6": {
+  "method": "hybrid",
+  "title": "Przykład 7.6 — metoda hybrydowa DEMATEL–ANP–VIKOR (renowacja organów)"
+ },
+ "P7.7": {
+  "method": "bipolar",
+  "title": "Przykład 7.7 — BIPOLAR (dane z rys. 1; test weta jak w przykładzie)"
+ },
+ "P7.8": {
+  "method": "bipolar",
+  "title": "Przykład 7.8 — BIPOLAR (2)"
+ },
+ "P7.10": {
+  "method": "bipolar",
+  "title": "Przykład 7.10 — BIPOLAR, modyfikacja zbioru obiektów „dobrych”"
+ },
+ "P7.11": {
+  "method": "bipolar",
+  "title": "Przykład 7.11 — BIPOLAR, modyfikacja zbioru obiektów „złych”"
+ },
+ "P7.12": {
+  "method": "bipolar",
+  "title": "Przykład 7.12 — BIPOLAR, kategoria B2′"
+ },
+ "P7.13": {
+  "method": "bipolar",
+  "title": "Przykład 7.13 — BIPOLAR dla dużego systemu referencyjnego (funkcje lokalnej preferencji)"
+ },
+ "P7.15": {
+  "method": "bipolar",
+  "title": "Przykład 7.15 — zmodyfikowany BIPOLAR, wariant klasyczny (wagi z decyli)"
+ },
+ "P7.16": {
+  "method": "bipolar_sd",
+  "title": "Przykład 7.16 — BIPOLAR z porządkowymi (prawie) dominacjami stochastycznymi"
+ },
+ "R14": {
+  "method": "fuzzy_topsis",
+  "title": "Rozdz. 14 — rozmyty TOPSIS z poziomami aspiracji i rezerwacji (oferty negocjacyjne)"
+ },
+ "R9.5": {
+  "method": "promethee_ii_veto",
+  "title": "Rozdz. 9 (R9.5) — PROMETHEE II z progami weta, projekty RPO WK-P"
+ },
+ "R9.5E": {
+  "method": "exprom_veto",
+  "title": "Rozdz. 9 (R9.5) — EXPROM II z progami weta, projekty RPO WK-P"
+ },
+ "R11": {
+  "method": "anp",
+  "title": "Rozdz. 11 — ANP, wybór systemu ERP (supermacierz R11.1, wagi komponentów tabl. 11.8)"
+ },
+ "R12": {
+  "method": "bipolar",
+  "title": "Rozdz. 12 — BIPOLAR (7.5.5), selekcja 55 akcji; zbiory referencyjne R12.2 (149 / 194)"
+ },
+ "R15": {
+  "method": "promethee_ii",
+  "title": "Rozdz. 15 — PROMETHEE II, premiowy system motywacji (51 pracowników, tabl. 15.4)"
+ },
+ "R16": {
+  "method": "electre_i",
+  "title": "Rozdz. 16 — ELECTRE I, renowacja organów (s = 0,72, bez weta)"
+ },
+ "R9.7I": {
+  "method": "scoring",
+  "title": "Rozdz. 9.5 (R9.7–R9.8) — ocena 60 projektów RPO WSL, Ekspert I (punkty ważone)"
+ },
+ "R9.7II": {
+  "method": "scoring",
+  "title": "Rozdz. 9.5 (R9.7–R9.8) — ocena 60 projektów RPO WSL, Ekspert II (punkty ważone)"
+ },
+ "R13": {
+  "method": "unicombos",
+  "title": "Rozdz. 13 — UniComBOS, ranking centrów handlowych (R13.1, R13.2, rys. 13.7)"
+ },
+ "R13.2": {
+  "method": "unicombos",
+  "title": "Rozdz. 13 — UniComBOS po porównaniach dwukryterialnych (R13.1, R13.2)"
+ },
+ "R15A": {
+  "method": "ahp",
+  "title": "Rozdz. 15.5.4 — AHP, premiowy system motywacji (porównania z różnic ocen, tabl. 15.7)"
+ },
+ "P8.1": {
+  "method": "dialog",
+  "title": "STEM-DPR (dialog), dane z przykładu 8.1"
+ },
+ "P8.2": {
+  "method": "dialog",
+  "title": "STEM-DPR (dialog), dane z przykładu 8.1"
+ },
+ "P8.3": {
+  "method": "dialog",
+  "title": "INSDECM (dialog), dane z przykładu 8.1"
+ },
+ "P8.4": {
+  "method": "dialog",
+  "title": "INSDECM (dialog), dane z przykładu 8.1"
+ },
+ "P8.5": {
+  "method": "dialog",
+  "title": "ATO-DPR (dialog), ustawienia przykładu 8.5"
+ },
+ "R10": {
+  "method": "dialog",
+  "title": "STEM-DPR (dialog), 14 portfeli z rozdz. 10"
+ }
+}

@@ -30,6 +30,17 @@ payload = json.dumps(files, ensure_ascii=False).replace("</", "<\\/")
 # kotwice wersji webowej transkrypcji (generuje build.py transkrypcji: web_build/odsylacze.json)
 book = (HERE / "book_anchors.json").read_text(encoding="utf-8").strip()
 html = (HERE / "template.html").read_text(encoding="utf-8").replace("/*__PYFILES__*/", payload).replace("/*__BOOKMAP__*/", book)
+# lista przykładów otwieranych z adresu (?example=…) — dla przycisków „Uruchom w aplikacji” w transkrypcji
+import sys
+sys.path.insert(0, str(ROOT))
+from mcdm_book import examples as book_ex  # noqa: E402
+from mcdm_book import api as book_api  # noqa: E402
+app = {e["id"]: {"method": e["method"], "title": e["title"]} for e in book_ex.listing()}
+for i, title in {"P8.1": "STEM-DPR (dialog), dane z przykładu 8.1", "P8.2": "STEM-DPR (dialog), dane z przykładu 8.1",
+                 "P8.3": "INSDECM (dialog), dane z przykładu 8.1", "P8.4": "INSDECM (dialog), dane z przykładu 8.1",
+                 "P8.5": "ATO-DPR (dialog), ustawienia przykładu 8.5", "R10": "STEM-DPR (dialog), 14 portfeli z rozdz. 10"}.items():
+    app[i] = {"method": "dialog", "title": title}
+(HERE / "app_examples.json").write_text(json.dumps(app, ensure_ascii=False, indent=1), encoding="utf-8")
 out = ROOT / "index.html"
 out.write_text(html, encoding="utf-8")
 print(out, len(html.encode()) // 1024, "KB,", len(files), "plików")

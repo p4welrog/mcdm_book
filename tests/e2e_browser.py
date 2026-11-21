@@ -348,6 +348,20 @@ def main():
         page.wait_for_function("document.querySelector('#problem-info').innerText.includes('przyklad_8_1')", timeout=15000)
         check("10 wariantów" in page.locator("#problem-info").inner_text(), "wczytanie pliku .mcf z dysku")
 
+        # --- start z adresu: ?example=… ---
+        page.goto(PAGE + "?example=P6.7")
+        page.wait_for_selector("#loading", state="hidden", timeout=180000)
+        page.wait_for_selector("#bk-out h2", timeout=30000)
+        check(page.locator("#bk-method").input_value() == "promethee_ii_veto" and page.locator("#bk-example").input_value() == "P6.7"
+              and "Wynik" in page.locator("#bk-out h2").inner_text(), "adres ?example=P6.7: przykład wczytany i policzony")
+        page.goto(PAGE + "?example=P8.5")
+        page.wait_for_selector("#loading", state="hidden", timeout=180000)
+        check(page.locator("#tab-ato").is_visible() and page.locator("#ato-sd").input_value() == "U2"
+              and "przykład 8.5" in page.locator("#problem-info").inner_text(), "adres ?example=P8.5: zakładka ATO-DPR z ustawieniami przykładu")
+        page.goto(PAGE + "?example=X9.9")
+        page.wait_for_selector("#loading", state="hidden", timeout=180000)
+        check("Nieznany przykład" in page.locator("#bk-hint").inner_text(), "adres z nieznanym przykładem: komunikat")
+
         check(not errors, "brak błędów JavaScript", "; ".join(errors))
         browser.close()
 

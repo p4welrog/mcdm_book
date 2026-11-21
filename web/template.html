@@ -439,6 +439,7 @@ async function init() {
     loadProblem(() => call("load_example", ex[0].id));
     bookInit();
     $("loading").style.display = "none";
+    urlStart();
   } catch (e) {
     $("loading-msg").innerHTML = "Nie udało się uruchomić Pythona w przeglądarce.<br><span class='muted small'>" + esc(e.message || e) +
       "</span><br><span class='muted small'>Strona wymaga połączenia z internetem (cdn.jsdelivr.net) i nowej przeglądarki.</span>";
@@ -2086,6 +2087,37 @@ function selRun() {
     bookExamplesForMethod(); bookLoadExample($("bk-example").value); $("sel-box").open = false;
   }));
 }
+// ---------- start z adresu: ?example=P6.7[&run=0] ----------
+// Przykłady z rozdz. 2–7 i części II → zakładka rankingu (domyślnie od razu liczone);
+// przykłady z rozdz. 8 i rozdz. 10 → zakładka dialogu z wczytanymi danymi (dialog rozpoczyna użytkownik).
+const URL_DIALOGS = {
+  "P8.1": ["przyklad_8_1", "stem"], "P8.2": ["przyklad_8_1", "stem"],
+  "P8.3": ["przyklad_8_1", "insdecm"], "P8.4": ["przyklad_8_1", "insdecm"],
+  "P8.5": ["przyklad_8_5", "ato"], "R10": ["rozdz_10", "stem"],
+};
+function showTab(tab) { const b = document.querySelector(`#tabs button[data-tab="${tab}"]`); if (b) b.click(); }
+function urlStart() {
+  const q = new URLSearchParams(location.search);
+  const id = (q.get("example") || "").trim();
+  if (!id) return;
+  const run = q.get("run") !== "0";
+  const dlg = URL_DIALOGS[id];
+  if (dlg) {
+    $("example").value = dlg[0];
+    loadProblem(() => call("load_example", dlg[0]));
+    if (id === "P8.5") $("ato-book").click();
+    if (id === "R10") $("stem-rel").value = "FSD,SSD";
+    showTab(dlg[1]);
+    return;
+  }
+  showTab("rank");
+  const ex = BK.examples.find((e) => e.id === id);
+  if (!ex) { $("bk-hint").innerHTML = note(`Nieznany przykład „${id}” w adresie strony.`, "warn"); return; }
+  bookLoadExample(id);
+  if (run) bookRun();
+  $("bk-example").scrollIntoView({ block: "start" });
+}
+
 // ---------- odsyłacze do transkrypcji książki ----------
 // Mapa kotwic z web_build/odsylacze.json (build.py transkrypcji); adres bazowy: ?book=…, localStorage, domyślny.
 // „(x.y)” = wzór; tytuły z numerem podrozdziału w nawiasie oznaczać klasą nobk.
