@@ -1,7 +1,7 @@
 """Część II książki (rozdz. 9–16): przypadki zastosowań odtworzone pakietem.
 
 Wartości oczekiwane pochodzą z druku albo z płyty; rozbieżności z drukiem są opisane w README
-(sekcja „Rozbieżności — część II”) i sprawdzane tu wprost."""
+(„Zgodność z książką” → „Część II”) i sprawdzane tu wprost."""
 import pytest
 
 from mcdm_book import api
