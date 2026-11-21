@@ -16,6 +16,7 @@ DATA = Path(__file__).parent / "mcdm_cd" / "data"
 EXAMPLES = {
     "przyklad_8_1": "przyklad_8_1.mcf — przykłady 8.1–8.4 (4 kryteria, 10 wariantów)",
     "Przyklad_1": "Przyklad_1.mcf — przykład STEM-DPR z instrukcji MCDM (3 kryteria, 20 wariantów)",
+    "rozdz_10": "rozdz. 10 — 14 portfeli projektów (R10.3–R10.4, tabl. 10.4; 6 kryteriów)",
     "przyklad_8_5": "przykład 8.5 (ATO-DPR) — jak 8.1, z zamienionymi rozkładami f1 wariantów a6 i a8",
 }
 
@@ -65,7 +66,7 @@ def load_example(name: str) -> str:
     if name not in EXAMPLES:
         raise ValueError(f"Nieznany przykład {name}")
     p = mcf_example(name)
-    p.source = f"{name}.mcf" if name != "przyklad_8_5" else "przykład 8.5"
+    p.source = {"przyklad_8_5": "przykład 8.5", "rozdz_10": "rozdz. 10 (R10.3–R10.5)"}.get(name, f"{name}.mcf")
     S["problem"] = p
     return _out(_summary(p))
 
@@ -178,7 +179,7 @@ def _question(q) -> dict:
     if q.kind == "parameters":
         k, cur = a
         out.update(k=k, criterion=p.criteria[k], current={str(pp): psi for pp, psi in cur.items()},
-                   params=[[pp, PARAMS[pp][1], PARAMS[pp][2]] for pp in range(2, 12)])
+                   params=[[pp, PARAMS[pp][1], PARAMS[pp][2]] for pp in range(2, 14)])
         return out
     if q.kind == "accept_solution":
         R = a[0]
@@ -262,7 +263,9 @@ def start(kind: str, orient_min: bool = True, vba_compat: bool = False, options:
         S["method"] = AtoDPR(p, risk=o.get("risk", DARA), dominances=o.get("dominances"),
                              almost=bool(o.get("almost", True)), tradeoff_rules=o.get("tradeoff_rules", ["FSD"]))
     elif kind == "stem":
-        S["method"] = StemDPR(p, orient_min=orient_min)
+        o = json.loads(options or "{}")
+        S["method"] = StemDPR(p, orient_min=orient_min,
+                              relations=o.get("relations") or ("FSD", "SSD", "TSD", "AFSD"))
     elif kind == "insdecm":
         S["method"] = Insdecm(p, orient_min=orient_min, vba_compat=vba_compat)
     else:

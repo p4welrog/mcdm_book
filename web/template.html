@@ -250,6 +250,8 @@
         wybierz X3 i podaj próg 6 — rozwiązaniem jest a3.</p>
       <div class="row">
         <label><input type="checkbox" id="stem-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label>
+        <label>Relacje we współczynniku d: <select id="stem-rel"><option value="FSD,SSD,TSD,AFSD">FSD, SSD, TSD, AFSD (jak MCDM 1.00)</option>
+          <option value="FSD,SSD">FSD, SSD (jak w rozdz. 10)</option><option value="FSD,SSD,AFSD">FSD, SSD, AFSD (wzór 8.4)</option></select></label>
         <button class="btn primary" id="stem-start">Rozpocznij dialog</button>
       </div>
     </div>
@@ -580,7 +582,7 @@ function startDialog(kind) {
       const o = { risk: sd === "INARA" ? "INARA" : "DARA", almost: $("ato-almost").checked, tradeoff_rules: $("ato-tr").value.split(",") };
       if (sd === "U2") o.dominances = ["FSD", "SSD"];
       q = call("start", "ato", true, false, JSON.stringify(o));
-    } else q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false)
+    } else q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false, JSON.stringify({ relations: $("stem-rel").value.split(",") }))
                         : call("start", "insdecm", !$("ins-raw").checked, $("ins-vba").checked);
   } catch (e) { showError(D[kind].log, e); return; }
   handle(kind, q);
@@ -695,7 +697,7 @@ function pTable(P) {
 const INS = {
   parameters(q) {
     const question = `Jakie parametry mają być prezentowane dla kryterium ${q.criterion}?`;
-    let h = `<div class="q">${esc(question)}</div><div class="muted small">Wartość oczekiwana jest prezentowana zawsze. Parametry 3–8 wymagają wartości ψ.</div>`;
+    let h = `<div class="q">${esc(question)}</div><div class="muted small">Wartość oczekiwana jest prezentowana zawsze. Parametry 3–8 wymagają wartości ψ. Minimum i maksimum (12–13) — rozszerzenie względem MCDM 1.00 (tabl. 10.8–10.13).</div>`;
     for (const [p, name, needs] of q.params) {
       const cur = q.current[String(p)];
       const has = String(p) in q.current;

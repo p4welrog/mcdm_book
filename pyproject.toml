@@ -17,4 +17,4 @@ mcf = ["xlrd>=2"]
 packages = ["mcdm_book", "mcdm_cd"]
 
 [tool.setuptools.package-data]
-mcdm_cd = ["data/*.mcf"]
+mcdm_cd = ["data/*.mcf", "data/*.json"]
