@@ -122,3 +122,7 @@ Mapę kotwic (`web/book_anchors.json`: `eq`, `tab`, `rys`, `prz`, `zb`, `sec`, `
 ### Otwieranie przykładu z adresu
 
 `index.html?example=<id>` wczytuje przykład z książki (identyfikatory jak w liście przykładów, np. `P6.7`, `R9.5`, `R15A`), wybiera metodę i od razu liczy (`&run=0` — bez liczenia). `P8.1`–`P8.4`, `P8.5` i `R10` otwierają zakładkę dialogu (STEM-DPR, INSDECM, ATO-DPR) z wczytanymi danymi. `python web/build.py` zapisuje listę obsługiwanych identyfikatorów w `web/app_examples.json`; korzysta z niej skrypt transkrypcji (`web_build/app_links.py`), który dodaje przy przykładach i zbiorach z CD przyciski „Uruchom w aplikacji”.
+
+### Wynik pakietu a druk
+
+Po wczytaniu przykładu z książki zakładka rankingu pokazuje panel zgodności z drukiem: status (zgodny / z zastrzeżeniami / rozbieżności), najważniejsze zgodne wartości, różnice z przyczyną (błąd druku, inne dane, konwencja) i link do sekcji erraty w transkrypcji. Treść: `mcdm_book/print_checks.py` (wpis dla każdego przykładu z `examples.listing()`, sprawdzane w `tests/test_print_checks.py`); wartości liczbowe pochodzą z testów pakietu i erraty transkrypcji.

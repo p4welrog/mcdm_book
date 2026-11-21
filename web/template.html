@@ -83,6 +83,17 @@
   .legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 2.5px solid currentColor;
                          vertical-align: middle; margin-right: 5px; }
   footer { max-width: 1180px; margin: 0 auto; padding: 0 28px 30px; color: var(--muted); font-size: 12.5px; }
+  .pc { border-left: 4px solid var(--line); }
+  .pc.ok { border-left-color: var(--ok); } .pc.approx { border-left-color: #c9a227; } .pc.diff { border-left-color: var(--bad); }
+  .pc summary { cursor: pointer; }
+  .pc .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; margin-left: 6px; font-weight: 600; }
+  .pc.ok .badge { background: var(--ok-soft); color: var(--ok); } .pc.approx .badge { background: var(--warn-soft); color: var(--warn); }
+  .pc.diff .badge { background: var(--bad-soft); color: var(--bad); }
+  .pc ul { margin: 8px 0 4px; padding-left: 0; list-style: none; }
+  .pc li { margin: 4px 0; padding-left: 22px; position: relative; font-size: 14px; }
+  .pc li::before { position: absolute; left: 0; width: 18px; text-align: center; font-weight: 700; }
+  .pc li.ok::before { content: "✓"; color: var(--ok); } .pc li.diff::before { content: "≠"; color: var(--bad); }
+  .pc li.conv::before { content: "≈"; color: var(--warn); } .pc li.info::before { content: "i"; color: var(--muted); font-style: italic; }
   a.bk { color: inherit; text-decoration: underline dotted var(--accent); text-underline-offset: 2px; }
   a.bk:hover { color: var(--accent); text-decoration-style: solid; }
 </style>
@@ -169,6 +180,7 @@
       <div id="bk-options" class="row"></div>
       <div class="btns"><button class="btn primary" id="bk-run">Oblicz</button></div>
     </div>
+    <div class="card pc" id="bk-print" style="display:none"></div>
     <div class="card" id="bk-out" style="display:none"></div>
   </section>
 
@@ -927,7 +939,7 @@ function bookInit() {
   delete BK.methods.select_method;
   BK.examples = call("book_examples");
   $("bk-method").innerHTML = Object.entries(BK.methods).map(([k, m]) => opt(k, `${m.title} (${m.chapter})`)).join("");
-  $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); });
+  $("bk-method").addEventListener("change", () => { BK.method = $("bk-method").value; BK.options = {}; bookExamplesForMethod(); bookRender(); bookPrintCheck(null); });
   $("bk-load").addEventListener("click", () => bookLoadExample($("bk-example").value));
   $("bk-add-var").addEventListener("click", () => { bookRead(); const p = BK.problem, ahpm = AHP_FAMILY.has(BK.method);
     if (ANP_FAMILY.has(BK.method)) { let v = "a" + (p.variants.length + 1); while (p.variants.includes(v)) v += "'"; p.variants.push(v);
@@ -955,7 +967,7 @@ function bookInit() {
       if (req.method) { BK.method = req.method; $("bk-method").value = req.method; bookExamplesForMethod(); }
       BK.options = req.options || {};
       BK.problem = req.problem || req;
-      bookRender();
+      bookRender(); bookPrintCheck(null);
     } catch (e) { $("bk-hint").innerHTML = note("Niepoprawny JSON: " + e.message, "bad"); }
   });
   $("bk-run").addEventListener("click", bookRun);
@@ -986,6 +998,22 @@ function bookLoadExample(id) {
   }
   $("bk-out").style.display = "none";
   bookRender();
+  bookPrintCheck(id);
+}
+
+// ---------- wynik pakietu a druk (mcdm_book/print_checks.py) ----------
+const PC_KIND = { ok: "zgodne", diff: "różnica z drukiem", conv: "konwencja / zaokrąglenie", info: "uwaga" };
+function bookPrintCheck(id) {
+  const box = $("bk-print");
+  const c = id ? call("book_print_check", id) : null;
+  if (!c) { box.style.display = "none"; box.innerHTML = ""; return; }
+  box.className = "card pc " + c.status;
+  let h = `<details open><summary><b>Wynik pakietu a druk</b> — ${esc(id)}<span class="badge">${esc(c.status_label)}</span></summary>`;
+  h += `<div style="margin-top:6px">${esc(c.summary)}</div><ul>` +
+    c.points.map(([k, t]) => `<li class="${esc(k)}" title="${esc(PC_KIND[k] || "")}">${esc(t)}</li>`).join("") + "</ul>";
+  const er = c.errata && BOOK.base ? `<a href="${esc(BOOK.base + "#errata-" + c.errata)}" target="_blank" rel="noopener">errata w transkrypcji</a>` : "errata w transkrypcji";
+  h += `<div class="small muted">Dotyczy danych przykładu bez zmian. Szczegóły: ${er}; wartości sprawdzane w testach pakietu.</div></details>`;
+  box.innerHTML = h; box.style.display = "";
 }
 
 function scaleStr(sc) {
