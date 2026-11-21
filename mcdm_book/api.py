@@ -11,7 +11,8 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable, Dict
 
-from . import additive, ahp, anp, bipolar, electre, hybrid, macbeth, promethee, reference, selection, zapros
+from . import (additive, agreement, ahp, anp, bipolar, electre, hybrid, macbeth, promethee, reference, selection, unicombos,
+               zapros)
 from .problem import Problem, ProblemError
 
 METHODS: Dict[str, Dict[str, Any]] = {
@@ -19,7 +20,8 @@ METHODS: Dict[str, Dict[str, Any]] = {
             "needs": "oceny liczbowe, wagi (weight)",
             "options": {"normalization": additive.NORMALIZATIONS}},
     "scoring": {"fn": additive.scoring, "chapter": "2.1", "title": "Metoda scoringowa",
-                "needs": "punkty przyznane wariantom (values), opcjonalnie max_points dla kryteriów", "options": {}},
+                "needs": "punkty przyznane wariantom (values), opcjonalnie max_points dla kryteriów; z wagami (weight) — "
+                         "ważona suma punktów (rozdz. 9.5)", "options": {}},
     "fsaw": {"fn": additive.fsaw, "chapter": "2.2", "title": "Rozmyta suma ważona (FSAW)",
              "needs": "oceny liczbowe, wagi rozmyte fuzzy_weight = [min, najlepsza, max]",
              "options": {"normalization": additive.NORMALIZATIONS}},
@@ -80,6 +82,11 @@ METHODS: Dict[str, Dict[str, Any]] = {
                    "needs": "kryteria z polem \"scale\"; \"jscv\" (wariacje od najmniej dotkliwej, np. \"C1>C2\") albo "
                             "\"jsqv\" (skale dla par kryteriów) albo \"qv_comparisons\" (tablice porównań wariacji)",
                    "options": {}},
+    "unicombos": {"fn": unicombos.unicombos, "chapter": "4.2 (przykład 4.9), 13", "title": "UniComBOS",
+                  "needs": "oceny liczbowe lub słowne; \"comparisons\" — porównania jednostek (1–3 kryteria): "
+                           "{criteria, first, second, answer: > | = | < | ?}; pole kryterium \"order\" (oceny od najlepszej)",
+                  "options": {"auto_single": "porównania jednokryterialne, których brak, z kierunku kryterium (domyślnie tak)",
+                              "max_block": "największa liczba kryteriów w porównaniu (3)"}},
     "electre_i": {"fn": electre.electre_i, "chapter": "5.2", "title": "ELECTRE I",
                   "needs": "oceny liczbowe na wspólnej skali, wagi; próg zgodności s i wspólny próg weta v",
                   "options": {"s": "próg zgodności (0,5–1)", "v": "wspólny próg weta"}},
@@ -183,11 +190,14 @@ def methods() -> Dict[str, Any]:
     """Opis metod do wyświetlenia lub wyboru (bez funkcji)."""
     out = {k: {kk: vv for kk, vv in v.items() if kk != "fn"} for k, v in METHODS.items()}
     out["select_method"] = SELECT_METHOD
+    out["agreement"] = agreement.DESCRIPTION
     return out
 
 
 def run(request: Dict[str, Any]) -> Dict[str, Any]:
     method = request.get("method")
+    if method == "agreement":
+        return agreement.indices(request.get("positions"), request.get("scores"))
     if method == "select_method":
         opts = dict(request.get("options") or {})
         unknown = set(opts) - {"scores", "methods"}

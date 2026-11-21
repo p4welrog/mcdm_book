@@ -4,6 +4,9 @@ from __future__ import annotations
 import copy
 from typing import Any, Dict
 
+from . import data_r13
+from .data_r9 import R9_7_I, R9_7_II, R9_PROPORTION, R9_WEIGHTS_BASIC, R9_WEIGHTS_SPECIFIC
+
 _BANKS = {
     "variants": ["a1", "a2", "a3", "a4", "a5"],
     "variant_labels": ["PKO BP", "BPS", "Kredyt Bank", "BZ WBK", "PEKAO SA"],
@@ -579,9 +582,9 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
     "R15": {"title": "Rozdz. 15 — PROMETHEE II, premiowy system motywacji (51 pracowników, tabl. 15.4)",
             "method": "promethee_ii", "options": {},
             "problem": {"name": "Pracownicy call center po selekcji", "variants": [r[0] for r in _R15],
-                        "criteria": [{"name": "f1 (efektywność)", "weight": 0.57, "type": 5, "q": 0.1, "p": 0.98},
+                        "criteria": [{"name": "f1 (ocena rozmów)", "weight": 0.57, "type": 5, "q": 0.1, "p": 0.98},
                                      {"name": "f2 (sprzedaż)", "weight": 0.10, "type": 5, "q": 9.1, "p": 82},
-                                     {"name": "f3 (jakość)", "weight": 0.33, "type": 5, "q": 0.1, "p": 0.9}],
+                                     {"name": "f3 (zadania dodatkowe)", "weight": 0.33, "type": 5, "q": 0.1, "p": 0.9}],
                         "values": [list(r[1:]) for r in _R15]}},
     "R16": {"title": "Rozdz. 16 — ELECTRE I, renowacja organów (s = 0,72, bez weta)", "method": "electre_i",
             "options": {"s": 0.72, "v": 10},
@@ -589,6 +592,38 @@ EXAMPLES: Dict[str, Dict[str, Any]] = {
                         "criteria": [{"name": n, "weight": w} for n, w in zip(_R16_NAMES, _R16_W)],
                         "values": [[_R16_T[k][i] for k in range(12)] for i in range(12)]}},
 }
+
+_R9_W = [R9_PROPORTION[0] * w for w in R9_WEIGHTS_BASIC] + [R9_PROPORTION[1] * w for w in R9_WEIGHTS_SPECIFIC]
+
+
+def _r97(expert, rows):
+    return {"title": f"Rozdz. 9.5 (R9.7–R9.8) — ocena 60 projektów RPO WSL, Ekspert {expert} (punkty ważone)",
+            "method": "scoring", "options": {},
+            "problem": {"name": f"Projekty RPO WSL — Ekspert {expert}", "variants": [f"a{i}" for i in range(1, 61)],
+                        "criteria": [{"name": f"f{k + 1}", "weight": w} for k, w in enumerate(_R9_W)],
+                        "values": [list(r) for r in rows]}}
+
+
+_D15 = [0.1, 0.21, 0.32, 0.43, 0.54, 0.65, 0.76, 0.87]          # tabl. 15.7, zakresy w [0; 1]
+_D15_SALES = [9.1, 18.21, 27.32, 36.43, 45.54, 54.65, 63.76, 72.87]
+
+EXAMPLES.update({
+    "R9.7I": _r97("I", R9_7_I),
+    "R9.7II": _r97("II", R9_7_II),
+    "R13": {"title": "Rozdz. 13 — UniComBOS, ranking centrów handlowych (R13.1, R13.2, rys. 13.7)",
+            "method": "unicombos", "options": {"auto_single": False}, "problem": data_r13.problem(3)},
+    "R13.2": {"title": "Rozdz. 13 — UniComBOS po porównaniach dwukryterialnych (R13.1, R13.2)",
+              "method": "unicombos", "options": {"auto_single": False}, "problem": data_r13.problem(2)},
+    "R15A": {"title": "Rozdz. 15.5.4 — AHP, premiowy system motywacji (porównania z różnic ocen, tabl. 15.7)",
+             "method": "ahp", "options": {},
+             "problem": {"name": "Pracownicy call center po selekcji", "variants": [r[0] for r in _R15],
+                         "criteria": [{"name": "f1 (ocena rozmów)", "difference_scale": _D15, "difference_decimals": 2},
+                                      {"name": "f2 (sprzedaż)", "difference_scale": _D15_SALES},
+                                      {"name": "f3 (zadania dodatkowe)", "difference_scale": _D15,
+                                       "difference_decimals": 2}],
+                         "values": [list(r[1:]) for r in _R15],
+                         "criteria_comparisons": [[1, 5, 2], ["1/5", 1, "1/4"], ["1/2", 4, 1]]}},
+})
 
 
 def listing():

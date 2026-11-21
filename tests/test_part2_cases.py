@@ -174,3 +174,104 @@ def test_r12_bipolar_ranking_differs_from_cd():
     s1 = [v for v, c in zip(r["variants"], st["S_category"]) if c == "S1"]
     assert s1 == ["ELZAB", "JELFA", "OLAWA"]
     assert round(st["d_S"][r["variants"].index("ELZAB")] * 149) == 103   # R12.4: 0,78 = 117/150
+
+
+# ---------------------------------------------------------------------------
+# Rozdz. 15.5.4 — AHP z porównaniami z różnic ocen (tabl. 15.7–15.8)
+# ---------------------------------------------------------------------------
+
+T158 = {"a24": .0377, "a42": .0365, "a26": .0296, "a37": .0295, "a41": .0285, "a2": .0272, "a68": .0264, "a8": .0257,
+        "a67": .0253, "a39": .0252, "a29": .025, "a52": .0248, "a57": .0245, "a59": .0243, "a19": .0243, "a66": .024,
+        "a43": .0237, "a13": .0235, "a21": .0234, "a23": .0225, "a65": .0225, "a38": .0224, "a28": .0224,
+        "a70": .0222, "a7": .022, "a12": .0214, "a74": .0205, "a11": .0203, "a20": .0201, "a15": .0193,
+        "a31": .0187, "a14": .0168, "a55": .0167, "a48": .0166, "a32": .0159, "a62": .0141, "a69": .0139,
+        "a40": .0135, "a35": .0134, "a16": .013, "a25": .0123, "a27": .0123, "a44": .0122, "a47": .0108,
+        "a50": .0107, "a18": .0097, "a1": .0097, "a72": .0087, "a73": .0076, "a17": .0075, "a6": .0052}
+
+
+def test_r15_ahp_weights():
+    """Tabl. 15.5: wektor własny 0,570; 0,097; 0,333 (druk: 0,57; 0,10; 0,33), γ ≈ 0,02."""
+    r = run("R15A")
+    w = r["steps"]["criteria_weights"]
+    assert w == pytest.approx([0.5695, 0.0974, 0.3331], abs=1e-4)
+    assert r["steps"]["matrices"][0]["gamma"] < 0.03
+
+
+def test_r15_ahp_difference_matrix():
+    """Tabl. 15.7 z zamienionymi nagłówkami: zakresy w [0; 1] dla f1 i f3, do 82 dla f2 (sprzedaż)."""
+    r = run("R15A")
+    V = r["variants"]
+    M1 = r["steps"]["matrices"][1]["matrix"]            # f1: a24 (0,98) vs a6 (0,30): różnica 0,68 → 7
+    assert M1[V.index("a24")][V.index("a6")] == 7 and M1[V.index("a6")][V.index("a24")] == pytest.approx(1 / 7)
+    M2 = r["steps"]["matrices"][2]["matrix"]            # f2: a21 (82) vs a25 (0) → 9; 63 − 9 = 54 → 6
+    assert M2[V.index("a21")][V.index("a25")] == 9 and M2[V.index("a15")][V.index("a24")] == 6
+    M3 = r["steps"]["matrices"][3]["matrix"]            # f3: 0,9 − 0,8 = 0,1 → 1 (zaokrąglenie różnicy)
+    assert M3[V.index("a8")][V.index("a2")] == 1
+
+
+def test_r15_ahp_not_reproduced():
+    """Tabl. 15.8 nieodtwarzalna co do wartości: mediana |różnicy| 0,0005, ρ Spearmana 0,989, ale a42, a24, a39
+    (f3 ≤ 0,1) wychodzą wyraźnie niżej (0,0261; 0,0341; 0,0227). Ósemka pakietu: a24, a26, a37, a41, a2, a68,
+    a42, a67 (druk: a8 zamiast a67). Dosłowne nagłówki tabl. 15.7 dają ρ = 0,70."""
+    r = run("R15A")
+    s = scores(r)
+    diffs = sorted(abs(s[v] - T158[v]) for v in s)
+    assert diffs[len(diffs) // 2] < 0.0006
+    assert s["a42"] == pytest.approx(0.0261, abs=2e-4) and s["a24"] == pytest.approx(0.0341, abs=2e-4)
+    assert set(r["ranking"][:8]) == {"a24", "a26", "a37", "a41", "a2", "a68", "a42", "a67"}
+    assert r["ranking"][0] == "a24"
+
+
+# ---------------------------------------------------------------------------
+# Rozdz. 9.5 — RPO WSL: punkty ważone (R9.7–R9.8), mierniki zgodności (R9.6, R9.10–R9.11)
+# ---------------------------------------------------------------------------
+
+def test_r9_7_weighted_points():
+    """„Ocena łączna” R9.7 = 0,4·Σ w f (f1–f9) + 0,6·Σ w f (f10–f16) poza 11 projektami Eksperta I i 6 Eksperta II.
+    Ekspert I a13: z tabl. 9.9 (f10 = 4, w R9.7: 3) wychodzi 26,6 jak w druku; a23: f14 = 5 poza skalą 0–4
+    (z 4 → 28,7 jak w druku); a38: f12 = 4,5 (z 3 → 26,2); a48: f16 = 0 (z 4 → 26,3); a9: f15 = 0,5 (z 1 → 29,3)."""
+    from mcdm_book.data_r9 import R9_7_I_TOTAL, R9_7_II_TOTAL
+    bad = {}
+    for key, tot in (("R9.7I", R9_7_I_TOTAL), ("R9.7II", R9_7_II_TOTAL)):
+        s = run(key)["scores"]["values"]
+        bad[key] = [i + 1 for i, (a, b) in enumerate(zip(s, tot)) if abs(a - b) > 0.051]
+    assert bad["R9.7I"] == [1, 2, 9, 13, 23, 31, 38, 39, 40, 48, 54]
+    assert bad["R9.7II"] == [1, 8, 11, 15, 16, 36]
+    e = EXAMPLES["R9.7I"]
+    for proj, k, val, printed in ((13, 9, 4, 26.6), (23, 13, 4, 28.7), (38, 11, 3, 26.2), (48, 15, 4, 26.3),
+                                  (9, 14, 1, 29.3)):
+        row = list(e["problem"]["values"][proj - 1])
+        row[k] = val
+        assert sum(c["weight"] * x for c, x in zip(e["problem"]["criteria"], row)) == pytest.approx(printed, abs=1e-9)
+
+
+def test_r9_8_positions_from_printed_totals():
+    """R9.8 / R9.10 (kolumna S): pozycje z „oceny łącznej” z druku (rangi z remisami), nie z ocen kryteriów;
+    jedyna różnica — Ekspert II a20 (29,2: pozycja 18, druk 17 razem z a16)."""
+    from mcdm_book.data_r9 import R9_10_S_I, R9_10_S_II, R9_7_I_TOTAL, R9_7_II_TOTAL
+    from mcdm_book.problem import ranks
+    assert ranks(R9_7_I_TOTAL) == R9_10_S_I
+    diff = [(i + 1, a, b) for i, (a, b) in enumerate(zip(ranks(R9_7_II_TOTAL), R9_10_S_II)) if a != b]
+    assert diff == [(20, 18, 17)]
+
+
+def test_r9_11_agreement_indices():
+    """R9.11 z pozycji R9.10 dokładnie: 59,22 % / 74,01 %, 65,89 % / 76,50 %, 80,67 % / 89,27 %, 84,11 % / 92,15 %."""
+    from mcdm_book.data_r9 import R9_10_EIII_I, R9_10_EIII_II, R9_10_S_I, R9_10_S_II
+    cases = [((R9_10_EIII_I, R9_10_EIII_II), (59.22, 74.01)), ((R9_10_S_I, R9_10_S_II), (65.89, 76.50)),
+             ((R9_10_S_I, R9_10_EIII_I), (80.67, 89.27)), ((R9_10_S_II, R9_10_EIII_II), (84.11, 92.15))]
+    for pos, (z2, z3) in cases:
+        r = api.run({"method": "agreement", "positions": [list(pos[0]), list(pos[1])]})
+        assert round(100 * r["position_agreement"], 2) == z2
+        assert round(100 * r["order_agreement"], 2) == z3
+
+
+def test_r9_9_electre_iii_positions_consistent():
+    """R9.9 a R9.10 (EIII): R9.9 dla Eksperta II podaje projekt 7 na poz. 1 i 2, projekt 32 na poz. 15 i 38,
+    pomija 3 i 34; R9.10 — projekty 3, 9, 13 na poz. 2 i 28, 34, 36, 42, 50 na poz. 38. Pozycje R9.10 są
+    rangami z remisami (pozycja = 1 + liczba projektów wyżej)."""
+    from mcdm_book.data_r9 import R9_10_EIII_I, R9_10_EIII_II
+    for P in (R9_10_EIII_I, R9_10_EIII_II):
+        assert all(p == 1 + sum(q < p for q in P) for p in P)
+    assert [i + 1 for i, p in enumerate(R9_10_EIII_II) if p == 2] == [3, 9, 13]
+    assert [i + 1 for i, p in enumerate(R9_10_EIII_II) if p == 38] == [28, 34, 36, 42, 50]

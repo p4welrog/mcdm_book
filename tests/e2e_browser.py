@@ -86,7 +86,8 @@ def main():
                     "P6.14": ("exprom_ii_sd", "a4"), "P6.16": ("exprom_ii_sd", "a2"), "P7.1": ("topsis", "a2"), "P7.3": ("fuzzy_topsis", "a8"),
                     "P7.4": ("vikor", "a3"), "P7.5": ("dematel", "C3 wartości muzyczne"), "P7.6": ("hybrid", "a8, a10"),
                     "P7.7": ("bipolar", "a4"), "P7.8": ("bipolar", "a1, a3"), "P7.12": ("bipolar", "a4"),
-                    "P7.13": ("bipolar", "a1"), "P7.16": ("bipolar_sd", "a8"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II")}
+                    "P7.13": ("bipolar", "a1"), "P7.16": ("bipolar_sd", "a8"), "R14": ("fuzzy_topsis", "a2"), "R9.2": ("compromise", "EXPROM II"),
+                    "R13": ("unicombos", "Sarni Stok"), "R15A": ("ahp", "a24"), "R9.7I": ("scoring", "a6")}
         for ex, (meth, best) in expected.items():
             page.select_option("#bk-method", meth)
             page.select_option("#bk-example", ex)
@@ -218,6 +219,21 @@ def main():
         out = page.locator("#bk-out").inner_text()
         check("K9 → K1" in out and "1. (C1→C2)" in out, "ZAPROS III: rangi i JSCV (przykład 4.8)")
         shot("macbeth_zapros")
+
+        # --- UniComBOS: porównania w edytorze, pytania z wyniku ---
+        page.select_option("#bk-method", "unicombos"); page.select_option("#bk-example", "R13.2"); page.click("#bk-load")
+        n0 = len(page.locator("#uni-comps").input_value().strip().split("\n"))
+        check(n0 == 99, "UniComBOS: 99 porównań R13.1 (60) + R13.2 (39) w edytorze", str(n0))
+        page.click("#bk-run")
+        out = page.locator("#bk-out").inner_text()
+        check("Sarni Stok → Ogrody" in out and "Pytania do porównań" in out, "UniComBOS: graf i pytania (R13.2)", out[:300])
+        page.click("#bk-out [data-uni-q='0'][data-uni-a='<']")
+        page.wait_for_timeout(300)
+        n1 = len(page.locator("#uni-comps").input_value().strip().split("\n"))
+        check(n1 == 100, "UniComBOS: odpowiedź na pytanie dopisuje porównanie", str(n1))
+        page.select_option("#bk-method", "ahp"); page.select_option("#bk-example", "R15A"); page.click("#bk-load")
+        check(page.locator("#bk-editor input[data-c='difference_scale']").count() == 3, "AHP: macierze z różnic ocen (rozdz. 15)")
+        shot("unicombos_ahp15")
 
         # --- dobór metody ---
         page.click("#sel-box summary")

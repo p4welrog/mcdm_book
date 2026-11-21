@@ -88,6 +88,11 @@ def scoring(p: Problem) -> Dict[str, Any]:
                 raise ProblemError(f"{p.variants[i]}/{p.criteria[k].name}: {X[i][k]:g} punktów poza zakresem 0–{cap}")
     if all(c is not None for c in caps):
         notes.append(f"Pula punktów P = {sum(float(c) for c in caps):g}.")
+    w = [c.weight for c in p.criteria]
+    if all(x is not None for x in w):
+        scores = [sum(float(wk) * x for wk, x in zip(w, row)) for row in X]
+        notes.append("Punkty ważone wagami kryteriów (bez normalizacji wag), jak ocena projektu w rozdz. 9.5.")
+        return _result("scoring", p, scores, "ważona suma punktów", {"points": X, "max_points": caps, "weights": w}, notes)
     scores = [sum(row) for row in X]
     return _result("scoring", p, scores, "suma punktów", {"points": X, "max_points": caps}, notes)
 

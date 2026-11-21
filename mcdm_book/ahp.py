@@ -5,6 +5,9 @@ Zadanie (oprócz pól wspólnych):
   "comparisons": {"nazwa kryterium": macierz m×m porównań wariantów, ...}.
 Kryterium bez macierzy porównań może mieć oceny liczbowe w "values" — wektor skali to wtedy oceny
 znormalizowane do sumy 1 (dla kryteriów minimalizowanych: odwrotności ocen), jak w przykładzie 3.4.
+Pole kryterium "difference_scale" (lista 8 górnych granic klas 1–8; powyżej ostatniej — 9) buduje macierz
+porównań z różnic ocen, jak w rozdz. 15.5.4 (tabl. 15.7): różnica d > 0 → ocena klasy, d < 0 → odwrotność,
+d = 0 → 1; opcjonalnie "difference_decimals" — zaokrąglenie różnicy przed odczytem klasy.
 
 Elementy macierzy: liczby, napisy "1/7", null (uzupełniane odwrotnością elementu symetrycznego).
 REMBRANDT: oceny δ ∈ {−8, …, 8} (tabl. 3.3), null uzupełniane przez −δ.
@@ -146,6 +149,36 @@ def _values_vector(p: Problem, k: int, notes: list) -> List[float]:
     return [v / s for v in col]
 
 
+def difference_matrix(p: Problem, k: int, notes: list) -> List[List[float]]:
+    """Macierz porównań z różnic ocen (rozdz. 15.5.4, tabl. 15.7)."""
+    c = p.criteria[k]
+    bounds = [crisp(b, f"{c.name}/difference_scale") for b in c.extra["difference_scale"]]
+    if len(bounds) != 8 or any(b2 <= b1 for b1, b2 in zip(bounds, bounds[1:])) or bounds[0] < 0:
+        raise ProblemError(f"Kryterium {c.name}: difference_scale wymaga 8 rosnących, nieujemnych granic klas 1–8")
+    dec = c.extra.get("difference_decimals")
+    col = [crisp(v, f"{p.variants[i]}/{c.name}") for i, v in enumerate(p.column(k))]
+    sign = 1 if c.maximize else -1
+
+    def cls(d: float) -> int:
+        if dec is not None:
+            d = round(d, int(dec))
+        for j, b in enumerate(bounds):
+            if d <= b + 1e-12:
+                return j + 1
+        return 9
+
+    A = [[1.0] * p.m for _ in range(p.m)]
+    for i in range(p.m):
+        for j in range(p.m):
+            d = sign * (col[i] - col[j])
+            if d > 0:
+                A[i][j] = float(cls(d))
+            elif d < 0:
+                A[i][j] = 1.0 / cls(-d)
+    notes.append(f"Kryterium {c.name}: macierz porównań z różnic ocen (granice klas {bounds}).")
+    return A
+
+
 def _comparisons(p: Problem) -> Tuple[Any, Dict[str, Any]]:
     cc = p.extra.get("criteria_comparisons")
     comp = p.extra.get("comparisons") or {}
@@ -185,6 +218,12 @@ def ahp(p: Problem, method: str = "eigen", eps: Optional[float] = None) -> Dict[
             cons = consistency(pr["lambda_max"], p.m, notes, f"Kryterium {c.name}")
             cols.append(pr["w"])
             matrices.append({"name": c.name, "matrix": A, **pr, **cons})
+        elif c.extra.get("difference_scale"):
+            A = difference_matrix(p, k, notes)
+            pr = priority_vector(A, method, eps)
+            cons = consistency(pr["lambda_max"], p.m, None, f"Kryterium {c.name}")
+            cols.append(pr["w"])
+            matrices.append({"name": c.name, "matrix": A, "from_differences": True, **pr, **cons})
         else:
             cols.append(_values_vector(p, k, notes))
             matrices.append({"name": c.name, "from_values": True, "w": cols[-1]})

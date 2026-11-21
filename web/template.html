@@ -799,7 +799,7 @@ const INS = {
 // ---------- metody z rozdz. 2 i 7 (mcdm_book) ----------
 const BK = { methods: null, examples: [], problem: null, method: "saw", options: {} };
 const CRIT_FIELDS = {
-  saw: ["direction", "weight"], scoring: ["max_points"], fsaw: ["direction", "fuzzy_weight"],
+  saw: ["direction", "weight"], scoring: ["max_points", "weight"], fsaw: ["direction", "fuzzy_weight"],
   smart: ["direction", "swing", "scale"], smarter: ["direction", "rank", "scale"],
   topsis: ["direction", "weight"], fuzzy_topsis: ["direction", "weight"], vikor: ["direction", "weight"],
   ahp: [], rembrandt: [], fuzzy_ahp: [], anp: [], fuzzy_anp: [], compromise: ["direction", "weight", "mandatory"],
@@ -813,9 +813,10 @@ const CRIT_FIELDS = {
   dematel: [], hybrid: ["direction", "cluster"], bipolar: ["direction", "weight", "q", "v"],
   bipolar_sd: ["direction", "weight", "q", "p", "v"],
   macbeth: ["weight"], macbeth_scale: [], zapros: ["grades"], zapros_iii: ["grades"],
+  unicombos: ["direction"],
 };
 const MAC_FAMILY = new Set(["macbeth", "macbeth_scale"]);
-const ZAP_FAMILY = new Set(["zapros", "zapros_iii"]);
+const ZAP_FAMILY = new Set(["zapros", "zapros_iii", "unicombos"]);
 const MAC_CATS = [["", "—"], ["no", "brak różnicy"], ["very weak", "bardzo mała"], ["weak", "mała"], ["moderate", "umiarkowana"],
   ["strong", "duża"], ["very strong", "bardzo duża"], ["extreme", "ekstremalna"], ["positive", "dodatnia (nie wiem)"]];
 const MAC_NUM = { 0: "no", 1: "very weak", 2: "weak", 3: "moderate", 4: "strong", 5: "very strong", 6: "extreme" };
@@ -869,6 +870,7 @@ const HINTS = {
   macbeth_scale: "Elementy (np. kryteria) jako wiersze; w macierzy oceny różnic atrakcyjności (wiersz lepszy od kolumny). Wynik: skala 0–100 i wagi po normalizacji.",
   zapros: "Skala ocen kryterium od najlepszej, np. A1 | A2 | A3 (oceny różne między kryteriami). W macierzy wpisz oceny wariantów. Pod tabelą wspólna skala porządkowa JOS albo porównania wektorów Y.",
   zapros_iii: "Skala ocen kryterium od najlepszej. Pod tabelą wspólna skala wariacji JSCV (od najmniej dotkliwej, np. C1>C2, A1>A2, …) albo JSQV dla par kryteriów — po jednej w wierszu.",
+  unicombos: "Oceny liczbowe albo słowne (np. tak / nie, duża / średnia). Pod tabelą porównania decydenta, po jednym w wierszu: „kryteria: oceny pierwszego > oceny drugiego”, np. „f2, f5: 28,81; 29326 > 33,32; 6341” (> lepszy, = tak samo, < gorszy, ? nie wiem). Porównania jednokryterialne, których brak, wynikają z kierunku kryterium (liczby). Wynik: porządek częściowy i pytania, które mogą go uzupełnić.",
   compromise: "Odległość L1 od rozwiązania idealnego (wzór 9.1). Kryterium obowiązkowe eliminuje wariant, który nie osiąga wartości idealnej.",
 };
 const FUZZY_VALUES = new Set(["fuzzy_topsis"]);
@@ -1151,9 +1153,28 @@ function macRead() {
     if (e.value === "") delete c.macbeth[key]; else { const lv = (c.macbeth.levels || p.variants); const hit = lv.find((x) => String(x) === e.value); c.macbeth[key] = hit === undefined ? e.value : hit; } });
 }
 function zapY(p) { const sc = p.criteria.map((c) => c.scale || []); return [sc.map((x) => x[0]).join("+")].concat(sc.flatMap((x) => x.slice(1))); }
+function uniStr(c) {
+  const v = (x) => typeof x === "number" ? numStr(x) : String(x);
+  return `${c.criteria.join(", ")}: ${c.first.map(v).join("; ")} ${({ better: ">", equal: "=", worse: "<", unknown: "?" })[c.answer] || c.answer} ${c.second.map(v).join("; ")}`;
+}
+function uniParse(line, names) {
+  const mt = line.match(/^([^:]+):(.*?)\s([<>=?~])\s(.*)$/);
+  if (!mt) throw new Error(`Porównanie „${line}”: zapis „kryteria: oceny > oceny”`);
+  const crit = mt[1].split(",").map((x) => x.trim()).filter(Boolean);
+  for (const c of crit) if (!names.includes(c)) throw new Error(`Porównanie „${line}”: nieznane kryterium ${c}`);
+  const vals = (t) => t.split(";").map((x) => parseMixed(x)).filter((x) => x !== null);
+  const a = vals(mt[2]), b = vals(mt[4]);
+  if (a.length !== crit.length || b.length !== crit.length) throw new Error(`Porównanie „${line}”: po ${crit.length} ocen(y) rozdzielonych „;”`);
+  return { criteria: crit, first: a, second: b, answer: mt[3] === "~" ? "=" : mt[3] };
+}
 function zapHtml() {
   const p = BK.problem, m = BK.method;
   let h = "";
+  if (m === "unicombos") {
+    const cs = p.comparisons || [];
+    return `<div style="margin-top:12px"><b>Porównania decydenta</b> <span class="small muted">(${cs.length}; jedno w wierszu)</span></div>` +
+      `<textarea id="uni-comps" rows="10" style="width:640px">${esc(cs.map(uniStr).join("\n"))}</textarea>`;
+  }
   if (m === "zapros") {
     const mode = p.y_comparisons ? "y" : "jos";
     h += `<div style="margin-top:12px"><b>Wspólna skala porządkowa</b> <select data-zap-mode="1" class="small">${opt("jos", "rangi JOS", mode === "jos")}${opt("y", "porównania wektorów Y", mode === "y")}</select></div>`;
@@ -1183,6 +1204,9 @@ function zapSetMode(mode) {
   else { delete p.jsqv; delete p.qv_comparisons; p.jscv = p.jscv || []; }
 }
 function zapRead() {
+  if (BK.method === "unicombos") { const p = BK.problem, names = p.criteria.map((c) => c.name);
+    if ($("uni-comps")) p.comparisons = $("uni-comps").value.split("\n").map((x) => x.trim()).filter(Boolean).map((x) => uniParse(x, names));
+    return; }
   const p = BK.problem, ed = $("bk-editor"), split = (s) => s.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);
   if ($("zap-jos")) p.jos = $("zap-jos").value.split("|").map((g) => g.trim().split(/\s+/).filter(Boolean)).filter((g) => g.length);
   if ($("zap-jscv")) p.jscv = split($("zap-jscv").value);
@@ -1506,6 +1530,8 @@ function ensureAhpData(p, m) {
   if (p.criteria_comparisons || m !== "ahp") p.criteria_comparisons = fix(p.criteria_comparisons, n);
   p.comparisons = p.comparisons || {};
   for (const c of p.criteria) {
+    if (m === "ahp" && (c.source === "differences" || (c.source === undefined && c.difference_scale))) {
+      c.source = "differences"; delete p.comparisons[c.name]; if (!c.difference_scale) c.difference_scale = [0.1, 0.21, 0.32, 0.43, 0.54, 0.65, 0.76, 0.87]; continue; }
     const fromValues = c.source === "values" || (!(c.name in p.comparisons) && m !== "rembrandt" && p.values && p.values.some((r) => r[p.criteria.indexOf(c)] !== null && r[p.criteria.indexOf(c)] !== undefined));
     if (fromValues && m !== "rembrandt") { c.source = "values"; delete p.comparisons[c.name]; }
     else { c.source = "comparisons"; p.comparisons[c.name] = fix(p.comparisons[c.name], k); }
@@ -1539,8 +1565,8 @@ function ahpRender() {
   h += `<h3 style="margin-top:6px">Kryteria</h3><table><thead><tr><th class="l">Kryterium</th>${m === "rembrandt" ? "" : "<th>wektor skali</th>"}<th></th></tr></thead><tbody>`;
   p.criteria.forEach((c, k) => {
     h += `<tr><td class="l"><input type="text" data-c="name" data-k="${k}" value="${esc(c.name)}" style="width:120px"></td>`;
-    if (m !== "rembrandt") h += `<td><select data-c="source" data-k="${k}">${opt("comparisons", "z porównań parami", c.source !== "values")}${opt("values", "z ocen liczbowych", c.source === "values")}</select>` +
-      (c.source === "values" ? ` <select data-c="direction" data-k="${k}">${opt("max", "max", c.direction !== "min")}${opt("min", "min", c.direction === "min")}</select>` : "") + "</td>";
+    if (m !== "rembrandt") h += `<td><select data-c="source" data-k="${k}">${opt("comparisons", "z porównań parami", c.source !== "values")}${opt("values", "z ocen liczbowych", c.source === "values")}${m === "ahp" ? opt("differences", "z różnic ocen (tabl. 15.7)", c.source === "differences") : ""}</select>` +
+      (c.source === "values" || c.source === "differences" ? ` <select data-c="direction" data-k="${k}">${opt("max", "max", c.direction !== "min")}${opt("min", "min", c.direction === "min")}</select>` : "") + "</td>";
     h += `<td><button class="btn small" data-del-c="${k}" style="padding:1px 6px">×</button></td></tr>`;
   });
   h += "</tbody></table>";
@@ -1552,7 +1578,9 @@ function ahpRender() {
   for (const c of p.criteria) {
     const k = p.criteria.indexOf(c);
     h += `<h3>Warianty względem kryterium ${esc(c.name)}</h3>`;
-    if (c.source === "values") {
+    if (c.source === "differences") h += `<div class="small">Górne granice różnic dla ocen 1–8 (powyżej ostatniej — 9): <input type="text" data-c="difference_scale" data-k="${k}" value="${esc((c.difference_scale || []).map(numStr).join("; "))}" style="width:360px">` +
+      ` zaokrąglenie różnic do <input type="text" data-c="difference_decimals" data-k="${k}" value="${esc(c.difference_decimals ?? "")}" style="width:30px"> miejsc</div>`;
+    if (c.source === "values" || c.source === "differences") {
       h += `<div class="row small">${p.variants.map((v, i) => `<label>${esc(v)}: <input type="text" data-i="${i}" data-k="${k}" value="${esc(cellStr(p.values[i][k]))}" style="width:60px"></label>`).join(" ")}</div>`;
     } else h += `<div class="tablewrap">${matrixHtml("c:" + c.name, p.variants, p.comparisons[c.name], m)}</div>`;
   }
@@ -1620,6 +1648,8 @@ function ahpRead() {
     else if (f === "source") c.source = s;
     else if (f === "direction") c.direction = s;
     else if (f === "weight") { if (s) c.weight = parseNum(s); else delete c.weight; }
+    else if (f === "difference_scale") { const b = parseNumbers(s.replace(/;/g, " ")); if (b.length !== 8) throw new Error(`${c.name}: podaj 8 granic klas`); c.difference_scale = b; }
+    else if (f === "difference_decimals") { if (s) c.difference_decimals = parseInt(s, 10); else delete c.difference_decimals; }
   });
   ed.querySelectorAll("[data-i]").forEach((e) => { const s = e.value.trim(); p.values[+e.dataset.i][+e.dataset.k] = s ? parseNum(s) : null; });
   ed.querySelectorAll("table[data-matrix]").forEach((t) => {
@@ -1631,7 +1661,7 @@ function ahpRead() {
 
 function ahpRequestProblem() {
   const p = JSON.parse(JSON.stringify(BK.problem));
-  for (const c of p.criteria) delete c.source;
+  for (const c of p.criteria) { if (c.source !== "differences") { delete c.difference_scale; delete c.difference_decimals; } delete c.source; }
   return p;
 }
 
@@ -1923,6 +1953,25 @@ function macZapResultHtml(r, st, V, C) {
       h += `<div class="small" style="margin-top:6px"><b>${name === "weights" ? "Wagi kryteriów" : "Kryterium " + esc(name)}</b> — 100 = ${esc(sc.upper)}, 0 = ${esc(sc.lower)}${sc.interpolation ? " (interpolacja odcinkowo liniowa)" : ""}</div>`;
       h += `<div class="tablewrap">` + table(["", ...sc.elements], [["skala podstawowa", ...sc.basic.map((x) => fmt(x))], ["skala MACBETH", ...sc.scale.map((x) => fmt(x))]], { raw: true }) + "</div>";
     }
+    return h;
+  }
+  if (r.method === "unicombos") {
+    h += "<h3>Porządek częściowy</h3><div class=\"tablewrap\">" + table(["Wariant", "ranga"], V.map((v, i) => [v,
+      st.rank_high[i] > st.rank_low[i] ? `${st.rank_low[i]}–${st.rank_high[i]}` : String(st.rank_low[i])]), { raw: true }) + "</div>";
+    h += `<div class="small"><b>Relacje</b> (P — wiersz lepszy, P- — gorszy, I — równoważne, R — nieporównywalne)</div><div class="tablewrap">` +
+      table(["", ...V], st.relations.map((row, i) => [V[i], ...row]), { raw: true }) + "</div>";
+    h += `<div class="small"><b>Graf (diagram Hassego):</b> ${st.edges.map(([a, b]) => `${esc(a)} → ${esc(b)}`).join(", ") || "brak"}</div>`;
+    const ex = Object.entries(st.explanation || {});
+    if (ex.length) h += `<div class="small" style="margin-top:6px"><b>Wyjaśnienie</b> (bloki kryteriów, na których lepszy wariant jest nie gorszy):</div><ul class="small">` +
+      ex.map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join("") + "</ul>";
+    const qs = st.suggested_questions || [];
+    if (qs.length) h += `<div class="small" style="margin-top:6px"><b>Pytania do porównań</b> (odpowiedź dopisuje porównanie i liczy ponownie):</div>` +
+      qs.map((q, i) => `<div class="small">${esc(q.variants.join(" vs "))} — ${esc(q.criteria.join(", "))}: (${esc(q.first.map(String).join("; "))}) vs (${esc(q.second.map(String).join("; "))}) ` +
+        [">", "=", "<"].map((a) => `<button class="btn small" data-uni-q="${i}" data-uni-a="${a}" type="button">${a}</button>`).join(" ") + "</div>").join("");
+    setTimeout(() => document.querySelectorAll("[data-uni-q]").forEach((b) => b.addEventListener("click", () => {
+      const q = qs[+b.dataset.uniQ]; try { bookRead(); } catch (e) {}
+      (BK.problem.comparisons = BK.problem.comparisons || []).push({ criteria: q.criteria, first: q.first, second: q.second, answer: b.dataset.uniA });
+      bookRender(); bookRun(); })), 0);
     return h;
   }
   const head = r.method === "zapros" ? ["Wariant", "oceny", "rangi JOS (rosnąco)", "ranga"] : ["Wariant", "oceny", "FIQ", "ranga"];
