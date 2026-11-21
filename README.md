@@ -112,3 +112,9 @@ ATO-DPR (`mcdm_cd.AtoDPR`, dialog jak w STEM-DPR: `run(ScriptedAtoDM([...]))` al
 Test strony w przeglądarce: `python tests/e2e_browser.py`. Skrypt sprawdza przykłady z książki we wszystkich zakładkach, edytor AHP, dobór metody i dialogi STEM-DPR, INSDECM i ATO-DPR. Wymaga Playwright; opcje i sposób uruchomienia bez dostępu do CDN opisuje nagłówek skryptu.
 
 Plik buduje skrypt `python web/build.py`: łączy szablon `web/template.html`, kod łączący stronę z pakietami (`web/web.py`), źródła obu pakietów, pliki .mcf z płyty oraz bibliotekę [xlrd](https://github.com/python-excel/xlrd) 2.0.1 (licencja BSD, `web/vendor/`). Po każdej zmianie w pakietach trzeba go uruchomić ponownie.
+
+### Odsyłacze do transkrypcji książki
+
+Numery wzorów („(6.21)”, „wzór 5.39”), tablic, rysunków, przykładów („P6.7”, „przykład 8.5”), zbiorów („R9.5”), podrozdziałów („rozdz. 9.3”) i stron („s. 253”) w tekście strony stają się linkami do wersji webowej transkrypcji książki. Transkrypcja nie jest częścią repozytorium; link działa tylko dla osób, które mają do niej dostęp. Adres bazowy ustawia się w zakładce „O programie” (pusty wyłącza linki) albo parametrem `?book=<adres>`; zapamiętuje go przeglądarka. Linki nie powstają w tablicach, polach formularzy i przyciskach. Zapis „(x.y)” jest traktowany jako numer wzoru — tytuły z numerem podrozdziału w nawiasie trzeba oznaczyć klasą `nobk`.
+
+Mapę kotwic (`web/book_anchors.json`: `eq`, `tab`, `rys`, `prz`, `zb`, `sec`, `page` → kotwica) generuje skrypt budujący transkrypcję (`web_build/build.py --anchors-only` zapisuje `odsylacze.json`); po zmianach w transkrypcji trzeba ją skopiować ponownie (klucze jak wyżej, bez `titles`).

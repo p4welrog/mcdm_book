@@ -1,4 +1,5 @@
-"""Składa index.html: szablon + źródła pakietów mcdm_book i mcdm_cd, most web.py, xlrd i pliki .mcf z płyty.
+"""Składa index.html: szablon + źródła pakietów mcdm_book i mcdm_cd, most web.py, xlrd, pliki .mcf z płyty
+i mapa kotwic transkrypcji książki (book_anchors.json).
 
 python web/build.py            → index.html w katalogu głównym repozytorium
 """
@@ -26,7 +27,9 @@ with zipfile.ZipFile(next((HERE / "vendor").glob("xlrd-*.whl"))) as z:
             files["vendor/xlrd/LICENSE"] = {"text": z.read(n).decode("utf-8")}
 
 payload = json.dumps(files, ensure_ascii=False).replace("</", "<\\/")
-html = (HERE / "template.html").read_text(encoding="utf-8").replace("/*__PYFILES__*/", payload)
+# kotwice wersji webowej transkrypcji (generuje build.py transkrypcji: web_build/odsylacze.json)
+book = (HERE / "book_anchors.json").read_text(encoding="utf-8").strip()
+html = (HERE / "template.html").read_text(encoding="utf-8").replace("/*__PYFILES__*/", payload).replace("/*__BOOKMAP__*/", book)
 out = ROOT / "index.html"
 out.write_text(html, encoding="utf-8")
 print(out, len(html.encode()) // 1024, "KB,", len(files), "plików")
