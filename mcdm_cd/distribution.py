@@ -119,8 +119,11 @@ PARAMS = {
     9: ("Mediana", "mediana", False),
     10: ("I Kwrt", "pierwszy kwartyl", False),
     11: ("III Kwrt", "trzeci kwartyl", False),
+    # rozszerzenie względem MCDM 1.00: tabl. 10.8–10.13 (INSDECM, rozdz. 10) prezentują minimum
+    12: ("Min", "wartość najmniejsza", False),
+    13: ("Max", "wartość największa", False),
 }
-LOCATION = (1, 9, 10, 11)   # im więcej, tym lepiej (dla kryterium maksymalizowanego)
+LOCATION = (1, 9, 10, 11, 12, 13)   # im więcej, tym lepiej (dla kryterium maksymalizowanego)
 DISPERSION = (2, 3, 4, 5, 6)  # im mniej, tym lepiej (niezależnie od kierunku kryterium)
 
 
@@ -166,6 +169,10 @@ def parameter(d: Distribution, p: int, psi: float | None = None, *, vba_compat: 
         return 1.0 if vba_compat else d.quantile(0.25)
     if p == 11:
         return 1.0 if vba_compat else d.quantile(0.75)
+    if p == 12:
+        return d.values[0]
+    if p == 13:
+        return d.values[-1]
     raise ValueError(f"Nieznany parametr {p}")
 
 

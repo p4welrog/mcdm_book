@@ -48,9 +48,20 @@ class StemResult:
 
 
 class StemDPR:
-    def __init__(self, problem: Problem, *, orient_min: bool = True):
+    def __init__(self, problem: Problem, *, orient_min: bool = True,
+                 relations: Sequence[str] = ("FSD", "SSD", "TSD", "AFSD")):
         """orient_min=False odtwarza MCDM 1.00, które bada dominacje na surowych wartościach
-        także dla kryteriów minimalizowanych (kierunek kryterium wpływa tylko na średnie)."""
+        także dla kryteriów minimalizowanych (kierunek kryterium wpływa tylko na średnie).
+        relations — relacje liczone we współczynniku d (8.3)–(8.4). Domyślnie jak MCDM 1.00
+        (FSD, SSD, TSD oraz AFSD z wagą (0,5 − ε)/0,5); ("FSD", "SSD") odtwarza przykład
+        z rozdz. 10 (tabl. 10.6–10.7), który nie liczy TSD ani AFSD."""
+        bad = set(relations) - {"FSD", "SSD", "TSD", "AFSD"}
+        if bad:
+            raise ValueError(f"Nieznane relacje: {sorted(bad)}")
+        self.relations = tuple(relations)
+        codes = {"FSD": 7.0, "SSD": 6.0, "TSD": 4.0}
+        self._codes = tuple(codes[r] for r in self.relations if r in codes)
+        self._afsd = "AFSD" in self.relations
         self.p = problem
         n, m = problem.n, problem.m
         # dom[k][i][j]: kod dominacji wariantu i nad j (7/6/4/128) albo stopień AFSD (0 < ε < 0,5)
@@ -78,9 +89,9 @@ class StemDPR:
             if not self.active_variant[j]:
                 continue
             v = self.dom[k][j][i]
-            if v in (7.0, 6.0, 4.0):
+            if v in self._codes:
                 s += 1
-            elif 0 < v < 0.5:
+            elif self._afsd and 0 < v < 0.5:
                 s += (0.5 - v) / 0.5
         return s
 

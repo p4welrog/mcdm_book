@@ -15,7 +15,7 @@ for pkg in ("mcdm_cd", "mcdm_book"):
     for f in sorted((ROOT / pkg).glob("*.py")):
         if f.name != "__main__.py":
             files[f"{pkg}/{f.name}"] = {"text": f.read_text(encoding="utf-8")}
-for f in sorted((ROOT / "mcdm_cd" / "data").glob("*.mcf")):
+for f in sorted((ROOT / "mcdm_cd" / "data").glob("*.mcf")) + sorted((ROOT / "mcdm_cd" / "data").glob("*.json")):
     files[f"mcdm_cd/data/{f.name}"] = {"b64": base64.b64encode(f.read_bytes()).decode()}
 files["web.py"] = {"text": (HERE / "web.py").read_text(encoding="utf-8")}
 with zipfile.ZipFile(next((HERE / "vendor").glob("xlrd-*.whl"))) as z:

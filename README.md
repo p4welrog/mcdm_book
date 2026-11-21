@@ -67,7 +67,7 @@ Oceny SAW, SMART i TOPSIS opierają się na zbiorze R9.2, a ELECTRE III, PROMETH
 
 ## Zgodność z książką
 
-Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P3.3, P3.4, P3.7, P3.10, P3.12–P3.14, P4.2, P4.3, P4.5–P4.8, P5.10–P5.16, P5.19, P5.20, P6.2–P6.16, P7.1, P7.3–P7.8, P7.12, P7.13, P7.15, P7.16, R9.2, R9.3, tablice 2.1–2.2 i rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376).
+Testy (`pytest`) odtwarzają przykłady z płyty: P2.1–P2.3, P2.5, P2.7, P2.11, P3.3, P3.4, P3.7, P3.10, P3.12–P3.14, P4.2, P4.3, P4.5–P4.8, P5.10–P5.16, P5.19, P5.20, P6.2–P6.16, P7.1, P7.3–P7.8, P7.12, P7.13, P7.15, P7.16, R9.2, R9.3, tablice 2.1–2.2, rozmyty TOPSIS z rozdz. 14 (oceny ofert 0,2706; 0,6507; 0,1656; 0,3391; 0,5145; 0,5376) oraz przypadki z części II (`tests/test_part2_cases.py`, przykłady `R9.5`, `R9.5E`, `R11`, `R15`, `R16` i `mcdm_cd.example("rozdz_10")`).
 
 Tam, gdzie książka zawiera błąd albo jest niejednoznaczna, pakiet przyjmuje wersję poprawną i to opisuje:
 - **Normalizacja kosztowa:** liczona jako (max − f)/(max − min). Wzory (2.4) i (2.9) w druku są tożsame z (2.3) i (2.8).
@@ -89,6 +89,15 @@ Rozbieżności w przykładach (P2.1, P2.7, P2.11, P3.14, P5.10, P5.13, P5.15–P
 ATO-DPR (`mcdm_cd.AtoDPR`, dialog jak w STEM-DPR: `run(ScriptedAtoDM([...]))` albo generator `dialog()`): opcje `risk`, `dominances` (relacje SD_T; klasa U₂ z przykładu 8.5 to `("FSD", "SSD")`), `almost` (AFSD przy pierwszym wariancie próbnym; przykład 8.5 ją pomija), `tradeoff_rules` (dominacje rozkładów współczynników wymiany: wzór (8.19) — FSD, tekst kroku 7 i przykład 8.5 — FSD i SSD; w przykładzie 8.5 wynik jest ten sam). Rozkład współczynnika wymiany liczony dokładnie ze wszystkich kombinacji (8.15)–(8.16), M = 10 000. Przykład 8.5 (`mcdm_cd.example("przyklad_8_5")`) odtworzony w całości: współczynniki d (tabl. 9–13), relacje T (tabl. 17–19, 21), kolejne warianty próbne a6 → a1 → a4. Tablica 7 przykładu powtarza tablicę 6, a „idealny wektor” w tabl. 20 jest liczony dla całego zbioru, nie dla 𝒜⁽²⁾.
 
 `mcdm_cd` sprawdzono z raportami StDom z przykładów 5.19, 6.13 i 6.15 oraz z przebiegami przykładów 8.2 i 8.4.
+
+### Część II (rozdz. 9–16)
+
+- **Rozdz. 9 (R9.5):** PROMETHEE II i EXPROM II z wetem dają kolejność tabl. 9.6; Φ różni się od druku najwyżej o 0,003 (R9.5 zaokrągla σ i ω do 3 miejsc). Kolumna „Minimum” tabl. 9.4 nie wchodzi do obliczeń.
+- **Rozdz. 10:** dane `rozdz_10` — f1, f2 z rozkładów R10.3–R10.4, f3–f6 ze średnich ocen ekspertów (tabl. 10.4, p = 1/3, f3–f5 ze znakiem minus jak w R10.5). STEM-DPR odtwarza tabl. 10.6–10.7 tylko przy `relations=("FSD", "SSD")`: przykład nie liczy TSD ani składnika AFSD z (8.4); domyślne ustawienie (jak MCDM 1.00) daje d₈₁ = 6,89, wybór a8 bez zmian. W druku d₈₆ = 6 (wychodzi 2) i μ₆₂ = −345,53 (wychodzi −345,38). INSDECM: dodano parametry rozkładu 12 (minimum) i 13 (maksimum), którymi posługują się tabl. 10.8–10.13. Warunek P{ξᵢ₁ ≥ 485} ≥ 0,7 z s. 209 zostawia tylko a4 i a9 (dalej zbiór pusty); zbiór 𝒜⁽²⁾ z druku daje np. warunek μᵢ₁ ≥ 482 — od niego 𝒜⁽³⁾, 𝒜⁽⁴⁾ = {a6, a8} i P(4) zgadzają się z drukiem.
+- **Rozdz. 11:** ANP z supermacierzy R11.1 i wag komponentów tabl. 11.8 odtwarza R11.3 i tabl. 11.13 (0,3035; 0,4415; 0,2551, w druku 0,2550).
+- **Rozdz. 15:** PROMETHEE II (typ 5, progi z s. 275–276) na danych tabl. 15.4 nie odtwarza tabl. 15.6: a24 i a42 (w druku poz. 1 i 4) mają −0,0065 i −0,0236; pierwsza ósemka to a37, a41, a2, a26, a8, a68, a67, a66. Rankingu AHP z tabl. 15.8 nie odtwarzam (przekształcenie różnic tabl. 15.7 ma zamienione nagłówki i niejednoznaczne granice).
+- **Rozdz. 16:** ELECTRE I bez weta (`v = 10`) daje grafy R16.2 (2, 5, 10, 21, 38 łuków) i rankingi z s. 288–290; reguła poziomów pomija łuki dwukierunkowe, tak odtwarza się tabl. 16.5 (kol. 1). Dla s = 0,86 a5 trafia na poziom 3, nie 1 (przewyższają go a4 i a10). Ranking hybrydowy: zob. DEMATEL–ANP–VIKOR wyżej.
+- **Rozdz. 12, 13:** nieodtworzone — dane R12.1–R12.2 są tylko w arkuszach .xls płyty (brak ich w repozytorium), a rozdz. 13 używa programu UniComBOS (werbalna analiza decyzyjna), którego pakiet nie implementuje. Rozdz. 14 — zob. rozmyty TOPSIS.
 
 ## Strona
 

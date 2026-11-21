@@ -51,7 +51,16 @@ def _num(v) -> float:
 
 def example(name: str = "przyklad_8_1") -> Problem:
     """Plik .mcf z płyty dołączony do pakietu: "przyklad_8_1" (przykłady 8.1–8.4) albo "Przyklad_1";
+    "rozdz_10" — 14 portfeli z rozdz. 10 (R10.3, R10.4, tabl. 10.2, 10.4);
     "przyklad_8_5" — dane przykładu 8.5 (jak 8.1, ale rozkłady kryterium f1 wariantów a6 i a8 zamienione)."""
+    if name == "rozdz_10":
+        import json
+        d = json.loads((Path(__file__).parent / "data" / "rozdz_10.json").read_text(encoding="utf-8"))
+        p = problem_from_tables(d["criteria"], [True] * len(d["criteria"]), d["variants"],
+                                [[tuple(x) for x in row] for row in d["dist"]])
+        p.comment = ("Rozdz. 10: 14 portfeli projektów; f1, f2 — R10.3–R10.4 (f2 ze znakiem minus), "
+                     "f3–f6 — średnie ocen 3 ekspertów (tabl. 10.4, p = 1/3; f3–f5 ze znakiem minus)")
+        return p
     if name == "przyklad_8_5":
         p = read_mcf(Path(__file__).parent / "data" / "przyklad_8_1.mcf")
         p.dist[5][0], p.dist[7][0] = p.dist[7][0], p.dist[5][0]
