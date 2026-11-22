@@ -284,7 +284,7 @@ def main():
         page.fill("#bk-editor input[data-i='0'][data-k='0']", "abc"); page.click("#bk-run")
         check("Niepoprawna liczba" in page.locator("#bk-out .note.bad").inner_text(), "TOPSIS: komunikat o błędnych danych")
 
-        # --- zakładki programów z płyty (mcdm_cd) ---
+        # --- zakładki dominacji stochastycznych i metod interaktywnych (mcdm_ryzyko) ---
         page.click("nav button[data-tab=dom]")
         page.wait_for_selector("#dom-table table")
         row = page.locator("#dom-table tr").nth(2).locator("td").all_inner_texts()
@@ -314,17 +314,23 @@ def main():
                     page.fill(f"#psi-{pp}", str(psi))
             page.click("#pp-ok")
 
-        params({8: "6"}); params({}); params({}); params({})
+        def podtrzymaj():
+            while page.locator("#ins-q .question button", has_text="Podtrzymanie").count():
+                q("#ins-q", "Podtrzymanie")
+
+        params({6: "6"}); params({}); params({}); params({})
         q("#ins-q", "Tak"); q("#ins-q", "Nie")
-        page.select_option("#c-k", "0"); page.select_option("#c-p", "8"); page.fill("#c-v", "0,5"); page.click("#c-ok")
+        page.select_option("#c-k", "0"); page.select_option("#c-p", "1"); page.fill("#c-v", "0,5"); page.click("#c-ok")
+        q("#ins-q", "Tak"); podtrzymaj(); q("#ins-q", "Nie")
+        params({6: "6"}); params({6: "5"}); params({}); params({})
         q("#ins-q", "Tak"); q("#ins-q", "Nie")
-        params({}); params({8: "5"}); params({}); params({})
-        q("#ins-q", "Tak"); q("#ins-q", "Nie")
-        page.select_option("#c-k", "1"); page.select_option("#c-p", "8"); page.fill("#c-v", "0,65"); page.click("#c-ok")
-        q("#ins-q", "Tak"); q("#ins-q", "Nie")
-        params({}); params({}); params({8: "7,5"}); params({})
-        q("#ins-q", "Tak"); q("#ins-q", "Tak"); q("#ins-q", "Tak")
-        check(page.locator("#ins-log .note").last.inner_text().endswith("a4, a5, a9"), "INSDECM (przykład 8.4)")
+        page.select_option("#c-k", "1"); page.select_option("#c-p", "1"); page.fill("#c-v", "0,65"); page.click("#c-ok")
+        q("#ins-q", "Tak"); podtrzymaj()
+        q("#ins-q", "Tak"); q("#ins-q", "Tak")
+        rtab = page.locator("#ins-log table").last.inner_text()
+        check(all(v in rtab for v in ("a4", "a5", "a9")), "INSDECM (przykład 8.4): macierz rozwiązań a4, a5, a9")
+        q("#ins-q", "Akceptuję a4")
+        check(page.locator("#ins-log .note").last.inner_text().endswith("a4"), "INSDECM: akceptacja rozwiązania")
         shot("insdecm")
 
         page.click("nav button[data-tab=dane]")
@@ -351,7 +357,7 @@ def main():
         page.click("nav button[data-tab=dane]")
         page.select_option("#example", "Przyklad_1")
         check("20 wariantów" in page.locator("#problem-info").inner_text(), "odczyt Przyklad_1.mcf")
-        page.set_input_files("#mcf-file", str(ROOT / "mcdm_cd" / "data" / "przyklad_8_1.mcf"))
+        page.set_input_files("#mcf-file", str(ROOT / "mcdm_book" / "data" / "przyklad_8_1.mcf"))
         page.wait_for_function("document.querySelector('#problem-info').innerText.includes('przyklad_8_1')", timeout=15000)
         check("10 wariantów" in page.locator("#problem-info").inner_text(), "wczytanie pliku .mcf z dysku")
 

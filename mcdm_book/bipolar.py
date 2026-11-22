@@ -329,8 +329,7 @@ def bipolar_sd(p: Problem, risk: str = "DARA", dominances: Optional[List[str]] =
     """BIPOLAR z dominacjami stochastycznymi: φ⁺, φ⁻ (7.89)–(7.90) z progami q, p dla wartości oczekiwanych,
     test zgodności c⁺ > c⁻ i niekonfliktowości μ_k ≥ v_k, d⁺ = c⁺ − c⁻ (7.93), d⁻ = c⁻ − c⁺ (7.94),
     d_S, d_N (7.95)–(7.96), d_SN (7.97); kategorie S, N, B wg znaku."""
-    from mcdm_cd import Distribution
-    from .promethee import _distribution, _dominance_test
+    from .promethee import _distribution, _dominance_test, _mean
     notes: list = []
     w = p.weights(notes=notes)
     m, n = p.m, p.n
@@ -346,7 +345,7 @@ def bipolar_sd(p: Problem, risk: str = "DARA", dominances: Optional[List[str]] =
     def orient(rows):
         out = []
         for r in rows:
-            out.append([d if c.maximize else Distribution.from_pairs([-x for x in d.values], list(d.probs))
+            out.append([d if c.maximize else d.odwrocony()
                         for d, c in zip(r, p.criteria)])
         return out
     A, D, Z = orient(A), orient(D), orient(Z)
@@ -367,8 +366,8 @@ def bipolar_sd(p: Problem, risk: str = "DARA", dominances: Optional[List[str]] =
         x = _num(c, "v")
         v.append(None if x is None else (x if c.maximize else -x))
     allowed, test = _dominance_test(risk, dominances)
-    muA = [[d.mean() for d in r] for r in A]
-    muR = [[d.mean() for d in r] for r in R]
+    muA = [[_mean(d) for d in r] for r in A]
+    muR = [[_mean(d) for d in r] for r in R]
 
     def phi(sd, diff, k):                                                                      # (7.89)–(7.90)
         if not sd or diff <= q[k] + _TOL:

@@ -108,7 +108,7 @@
   <h1>Wielokryterialne wspomaganie decyzji — metody z książki w przeglądarce</h1>
   <p>Metody z książki „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik, PWE 2014):
      metody addytywne i metody punktów referencyjnych (pakiet <code>mcdm_book</code>) oraz dominacje stochastyczne i metody
-     interaktywne STEM-DPR i INSDECM — port programów K. Targiela z płyty CD — oraz ATO-DPR (pakiet <code>mcdm_cd</code>). Obliczenia wykonuje
+     interaktywne STEM-DPR i INSDECM (pakiet <code>mcdm_ryzyko</code>) oraz ATO-DPR. Obliczenia wykonuje
      kod Pythona uruchomiony w przeglądarce przez Pyodide.</p>
 </header>
 
@@ -212,8 +212,8 @@
     <div class="card">
       <div class="row"><h2 style="margin:0">Wykryte dominacje</h2>
         <label>Kryterium: <select id="dom-crit"></select></label>
-        <label><input type="checkbox" id="dom-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label></div>
-      <p class="muted small">Odpowiednik arkusza „Wykryte dominacje” programu MCDM: wariant w wierszu dominuje wariant w kolumnie
+</div>
+      <p class="muted small">Wariant w wierszu dominuje wariant w kolumnie
         (FSD, SSD, TSD przy awersji do ryzyka; AFSD(ε) — prawie dominacja pierwszego stopnia ze stopniem ε &lt; 0,5).</p>
       <div id="dom-table" class="tablewrap"></div>
     </div>
@@ -223,7 +223,7 @@
   <section id="tab-stdom">
     <div class="card">
       <h2>Dominacje stochastyczne — czy X dominuje Y?</h2>
-      <p class="muted small">Formatka programu StDom. Liczby oddziel spacjami lub średnikami; dozwolony przecinek dziesiętny i ułamki (np. <code>1/7</code>).
+      <p class="muted small">Relacje z tabl. 1.1–1.4 (rozdz. 1.3). Liczby oddziel spacjami lub średnikami; dozwolony przecinek dziesiętny i ułamki (np. <code>1/7</code>).
         Domyślnie dane przykładu 1.10.</p>
       <div class="grid2">
         <div><b>Rozkład X</b>
@@ -244,9 +244,8 @@
         <label><b>Stosunek do ryzyka:</b> <select id="sd-risk"><option value="DARA">awersja (DARA)</option><option value="INARA">skłonność (INARA)</option></select></label>
       </div>
       <div class="row" style="margin-top:8px">
-        <label><input type="checkbox" id="sd-afsd"> prawie dominacje (AFSD / OAFSD)</label>
+        <label><input type="checkbox" id="sd-afsd"> prawie dominacje: stopnie naruszenia ε (AFSD, ASSD / OAFSD)</label>
         <label><input type="checkbox" id="sd-assd"> OASSD (tylko porządkowe)</label>
-        <label><input type="checkbox" id="sd-quirk" checked> zachowanie StDom 1.09b (Param = 7)</label>
       </div>
       <div class="btns"><button class="btn primary" id="sd-run">Oblicz</button></div>
     </div>
@@ -266,8 +265,7 @@
         największa po kryteriach aktywnych wartość współczynnika d) i pyta decydenta o ocenę. Przebieg z <b>przykładu 8.2</b>: odpowiedz „Nie”, „Tak”,
         wybierz X3 i podaj próg 6 — rozwiązaniem jest a3.</p>
       <div class="row">
-        <label><input type="checkbox" id="stem-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label>
-        <label>Relacje we współczynniku d: <select id="stem-rel"><option value="FSD,SSD,TSD,AFSD">FSD, SSD, TSD, AFSD (jak MCDM 1.00)</option>
+        <label>Relacje we współczynniku d: <select id="stem-rel"><option value="FSD,SSD,TSD,AFSD">FSD, SSD, TSD, AFSD (awersja do ryzyka, wzór 8.4)</option>
           <option value="FSD,SSD">FSD, SSD (jak w rozdz. 10)</option><option value="FSD,SSD,AFSD">FSD, SSD, AFSD (wzór 8.4)</option></select></label>
         <button class="btn primary" id="stem-start">Rozpocznij dialog</button>
       </div>
@@ -281,10 +279,9 @@
       <h2>Metoda INSDECM</h2>
       <p class="muted small">Interaktywna metoda z rozdz. 8 oparta na macierzy możliwości (wartości pesymistyczne i optymistyczne wybranych parametrów
         rozkładów). Przebieg z <b>przykładu 8.4</b>: dla X1 parametr Pr{X ≥ 6}; warunek X1, Pr{X ≥ 6} ≥ 0,5; potem dla X2 Pr{X ≥ 5} i warunek ≥ 0,65;
-        potem dla X3 Pr{X ≥ 7,5} i akceptacja — warianty a4, a5, a9.</p>
+        potem dla X3 Pr{X ≥ 7,5} i akceptacja — warianty a4, a5, a9. Parametry są liczone w orientacji „więcej = lepiej”
+        (dla kryterium minimalizowanego ze zmienionym znakiem).</p>
       <div class="row">
-        <label><input type="checkbox" id="ins-raw"> dominacje na surowych wartościach (jak MCDM 1.00)</label>
-        <label><input type="checkbox" id="ins-vba"> parametry rozkładu jak w MCDM 1.00</label>
         <button class="btn primary" id="ins-start">Rozpocznij dialog</button>
       </div>
     </div>
@@ -330,32 +327,18 @@
     </div>
     <div class="card">
       <h2>O programie</h2>
-      <p>Strona uruchamia w przeglądarce pakiet <code>mcdm_cd</code> — port do Pythona obliczeń z dwóch dodatków Excela z płyty CD dołączonej do książki
-        „Wielokryterialne wspomaganie decyzji. Metody i zastosowania” (red. T. Trzaskalik):</p>
-      <ul>
-        <li><b>StDom 1.09b</b> (K. Targiel, 2014) — zwykłe i porządkowe dominacje stochastyczne (FSD, SSD, TSD, SISD, TISD, AFSD, OFSD, OSSD, OAFSD, OASSD);</li>
-        <li><b>MCDM 1.00</b> (K. Targiel, 2013) — metody interaktywne STEM-DPR i INSDECM dla dyskretnych problemów decyzyjnych w warunkach ryzyka (rozdz. 8). Metoda ATO-DPR (rozdz. 8.5) nie ma odpowiednika w programach z płyty — zaimplementowana według książki i sprawdzona na przykładzie 8.5.</li>
-      </ul>
-      <p>Wyniki portu sprawdzono z raportami StDom wklejonymi do przykładów 5.19, 6.13 i 6.15, z arkuszem „Wyniki” pliku <code>StDom_Przyklad1</code>
-        (przykład 1.10) oraz z przebiegami przykładów 8.2 (STEM-DPR) i 8.4 (INSDECM).</p>
-      <h3>Różnice względem programów z płyty</h3>
-      <p class="small">Domyślnie port liczy według definicji matematycznych; zachowanie oryginału można włączyć opcjami:</p>
-      <ul class="small">
-        <li><b>dominacje na surowych wartościach</b> — MCDM 1.00 bada dominacje bez odwracania kryteriów minimalizowanych (oba pliki .mcf z płyty mają same kryteria maksymalizowane, więc wyniki się nie różnią);</li>
-        <li><b>zachowanie StDom 1.09b (Param = 7)</b> — zaznaczenie AFSD/OAFSD przełącza w StDom obliczenia na wariant INARA, więc SSD/TSD (OSSD) są wtedy raportowane jako niezachodzące, chyba że zachodzi FSD;</li>
-        <li><b>parametry rozkładu jak w MCDM 1.00</b> — odchylenie standardowe względem v·p ostatniego punktu, mediana jako pozycja środkowa bez wag, kwartyle zawsze równe 1;</li>
-        <li>TSD bez warunku na wartości oczekiwane (całki tylko do największej wartości siatki), jak w programach z płyty;</li>
-        <li>INSDECM: korekta progu po niespójności z nierównościami ostrymi (poza parametrami 7/8), a reakcja „podtrzymanie” usuwa ze zbioru niespójności wszystkie pary z tym samym wariantem dominującym lub dominowanym — jak w oryginale.</li>
-      </ul>
-      <h3>Format pliku .mcf</h3>
-      <p class="small">Skoroszyt Excela (.xls) z arkuszem „Dane”: A1 komentarz; A2 liczba kryteriów, B2 liczba wariantów; wiersz 4 od kolumny B — nazwy kryteriów,
-        wiersz 5 — 1 dla kryteriów maksymalizowanych, 0 dla minimalizowanych; wiersz 7 — nazwy wariantów; od wiersza 10 dla każdego wariantu po dwa wiersze
-        na kryterium (wartości i prawdopodobieństwa, do 10 punktów w kolumnach B:K) i jeden wiersz odstępu.</p>
+      <p>Zakładki „Zadanie”, „Wykryte dominacje”, „StDom”, STEM-DPR i INSDECM korzystają z pakietu <code>mcdm_ryzyko</code>:
+        rozkłady ocen, dominacje stochastyczne (FSD, SSD, TSD, SISD, TISD1, TISD2, AFSD, ASSD, OFSD, OSSD, OAFSD, OASSD; rozdz. 1.3)
+        oraz metody interaktywne STEM-DPR i INSDECM (rozdz. 8.3–8.4). Pakiet napisano według książki, bez korzystania z kodu programów z płyty CD;
+        zadania z płyty (pliki .mcf, rozdz. 10) wczytuje się bez zmian. ATO-DPR (rozdz. 8.5) zaimplementowano według książki i sprawdzono na przykładzie 8.5.</p>
+      <p>Wyniki sprawdzono z przykładami 1.10–1.15, 8.1–8.5, raportami StDom wklejonymi do przykładów 5.19, 6.13 i 6.15 oraz z rozdz. 10;
+        rozbieżności z drukiem opisuje dokumentacja pakietu.</p>
+      <p class="small">Własne zadania można wczytać z pliku .mcf zapisanego programem MCDM 1.00 (skoroszyt Excela z arkuszem „Dane”, jak pliki z płyty).</p>
       <p class="small muted">Wymaga połączenia z internetem przy pierwszym otwarciu (Pyodide ładowany z cdn.jsdelivr.net). Pliki wczytywane z dysku nie opuszczają przeglądarki.</p>
     </div>
   </section>
 </main>
-<footer>Pyodide <span id="pyver"></span> · pakiety mcdm_book 0.1.0 i mcdm_cd 0.1.0</footer>
+<footer>Pyodide <span id="pyver"></span> · pakiety mcdm_book 0.1.0 i mcdm_ryzyko 0.1.0</footer>
 
 <script type="application/json" id="pyfiles">/*__PYFILES__*/</script>
 <script type="application/json" id="bookmap">/*__BOOKMAP__*/</script>
@@ -439,7 +422,7 @@ async function init() {
   try {
     py = await loadPyodide();
     $("pyver").textContent = py.version;
-    $("loading-msg").textContent = "Ładowanie pakietu mcdm_cd…";
+    $("loading-msg").textContent = "Ładowanie pakietów…";
     const files = JSON.parse($("pyfiles").textContent);
     for (const [path, f] of Object.entries(files)) {
       const full = "/home/pyodide/" + path;
@@ -511,7 +494,7 @@ function renderDominance() {
   const k = Number($("dom-crit").value || 0);
   $("dom-table").innerHTML = "<span class='muted'>Obliczanie…</span>";
   setTimeout(() => {
-    const d = call("dominance_matrix", k, !$("dom-raw").checked);
+    const d = call("dominance_matrix", k);
     $("dom-table").innerHTML = table([`${d.criterion}: wiersz ≻ kolumna`, ...d.variants],
       d.rows.map((r, i) => [d.variants[i], ...r]),
       { raw: true, cellClass: (i, j, c) => j === 0 ? "l" : (i === j - 1 ? "diag" :
@@ -519,7 +502,6 @@ function renderDominance() {
   }, 10);
 }
 $("dom-crit").addEventListener("change", renderDominance);
-$("dom-raw").addEventListener("change", renderDominance);
 
 // ---------- StDom ----------
 function fillFrom(side) {
@@ -538,12 +520,12 @@ function runStdom() {
     const xv = parseNumbers($("xv").value), xp = parseNumbers($("xp").value);
     const yv = parseNumbers($("yv").value), yp = parseNumbers($("yp").value);
     r = call("stdom", py.toPy(xv), py.toPy(xp), py.toPy(yv), py.toPy(yp), $("sd-kind").value === "o",
-             $("sd-risk").value, $("sd-afsd").checked, $("sd-assd").checked, $("sd-quirk").checked);
+             $("sd-risk").value, $("sd-afsd").checked, $("sd-assd").checked);
   } catch (e) { showError("sd-report", e); return; }
   $("sd-report").innerHTML = table(["Dominacja", "Wynik"], r.rows, { raw: true }) +
     `<div class="small" style="margin-top:8px">E[X] = ${fmt(r.mean_x)}, E[Y] = ${fmt(r.mean_y)}</div>`;
   const hk = Object.entries(r.holds);
-  if (hk.length) $("sd-holds").innerHTML = "Każdy warunek sprawdzony osobno: " + hk.map(([k, v]) => `${k}: ${v ? "tak" : "nie"}`).join(", ");
+ if (hk.length) $("sd-holds").innerHTML = "Każda definicja sprawdzona osobno: " + hk.map(([k, v]) => `${k}: ${v ? "tak" : "nie"}`).join(", ");
   $("sd-chart").innerHTML = cdfChart(r.grid, r.cdf_x, r.cdf_y);
 }
 $("sd-run").addEventListener("click", runStdom);
@@ -612,9 +594,9 @@ function startDialog(kind) {
       const sd = $("ato-sd").value;
       const o = { risk: sd === "INARA" ? "INARA" : "DARA", almost: $("ato-almost").checked, tradeoff_rules: $("ato-tr").value.split(",") };
       if (sd === "U2") o.dominances = ["FSD", "SSD"];
-      q = call("start", "ato", true, false, JSON.stringify(o));
-    } else q = kind === "stem" ? call("start", "stem", !$("stem-raw").checked, false, JSON.stringify({ relations: $("stem-rel").value.split(",") }))
-                        : call("start", "insdecm", !$("ins-raw").checked, $("ins-vba").checked);
+      q = call("start", "ato", JSON.stringify(o));
+    } else q = kind === "stem" ? call("start", "stem", JSON.stringify({ relations: $("stem-rel").value.split(",") }))
+                        : call("start", "insdecm", "{}");
   } catch (e) { showError(D[kind].log, e); return; }
   handle(kind, q);
 }
@@ -625,6 +607,7 @@ $("ato-book").addEventListener("click", () => { $("ato-sd").value = "U2"; $("ato
 
 function handle(kind, q) {
   if (q.done) return finish(kind, q);
+  if (q.error) logAdd(kind, note("Odpowiedź odrzucona: " + q.error, "bad"));
   ({ stem: STEM, insdecm: INS, ato: ATO })[kind][q.kind](q);
 }
 
@@ -728,7 +711,7 @@ function pTable(P) {
 const INS = {
   parameters(q) {
     const question = `Jakie parametry mają być prezentowane dla kryterium ${q.criterion}?`;
-    let h = `<div class="q">${esc(question)}</div><div class="muted small">Wartość oczekiwana jest prezentowana zawsze. Parametry 3–8 wymagają wartości ψ. Minimum i maksimum (12–13) — rozszerzenie względem MCDM 1.00 (tabl. 10.8–10.13).</div>`;
+    let h = `<div class="q">${esc(question)}</div><div class="muted small">Wartość oczekiwana jest prezentowana zawsze. Parametry z polem ψ wymagają wartości (próg albo rząd kwantyla).</div>`;
     for (const [p, name, needs] of q.params) {
       const cur = q.current[String(p)];
       const has = String(p) in q.current;
@@ -803,17 +786,18 @@ const INS = {
   },
   inconsistency_action(q) {
     const inc = q.inc;
-    logAdd("insdecm", note(`Niespójność: odrzucony wariant ${inc.i} dominuje stochastycznie pozostawiony wariant ${inc.j} ` +
-      `(stopień AFSD ε = ${fmt(inc.eps, 3)}).`, "warn"));
+    logAdd("insdecm", note(`Niespójność (${inc.criterion}): odrzucony wariant ${inc.i} dominuje stochastycznie pozostawiony wariant ${inc.j} ` +
+      `(stopień ε = ${fmt(inc.eps, 3)}).`, "warn") + `<div class="tablewrap">` +
+      table(["s", ...inc.points.map((x) => fmt(x, 3))], [[`P(X ≥ s), ${inc.i}`, ...inc.pi.map((x) => fmt(x, 3))],
+        [`P(X ≥ s), ${inc.j}`, ...inc.pj.map((x) => fmt(x, 3))]]) + "</div>");
     bindButtons("insdecm", q.kind, "Wybór akcji", [
       { label: "Podtrzymanie warunku", value: 0 }, { label: "Osłabienie warunku", value: 1, cls: "warn" },
       { label: "Zaostrzenie warunku", value: 2, cls: "danger" }]);
   },
   accept_proposal(q) {
-    const pr = q.proposal;
-    const question = `Proponowana zmiana warunku dla ${pr.criterion}, parametr ${pr.param}`;
-    const choices = [{ label: `Akceptacja: próg ${fmt(pr.value)}`, value: "value", cls: "primary" }];
-    if (pr.value_other !== null && pr.value_other !== undefined) choices.push({ label: `Akceptacja: próg ${fmt(pr.value_other)}`, value: "value_other", cls: "primary" });
+    const question = q.weaken ? "Proponowane osłabienie warunku" : "Proponowane zaostrzenie warunku";
+    if (!q.proposals.length) logAdd("insdecm", note("Brak propozycji, po których zostałby jakiś wariant.", "warn"));
+    const choices = q.proposals.map((t, i) => ({ label: `Akceptacja: ${t}`, value: i, cls: "primary" }));
     choices.push({ label: "Odrzucenie", value: null });
     bindButtons("insdecm", q.kind, question, choices);
   },
@@ -823,7 +807,8 @@ const INS = {
     R.cols.forEach(([c]) => { if (!crits.length || crits[crits.length - 1].text !== c) crits.push({ text: c, span: 1 }); else crits[crits.length - 1].span++; });
     logAdd("insdecm", `<h4>Macierz rozwiązań R(${R.iteration})</h4><div class="tablewrap">` +
       table([["Kryterium", ...crits], ["Wariant \\ parametr", ...R.cols.map((c) => c[1])]], R.rows) + "</div>");
-    bindButtons("insdecm", q.kind, "Czy akceptujesz jedno z rozwiązań?", yesNo(false));
+    bindButtons("insdecm", q.kind, "Czy akceptujesz jedno z rozwiązań?",
+      [...q.variants.map(([i, name]) => ({ label: `Akceptuję ${name}`, value: i, cls: "yes" })), { label: "Nie", value: null }]);
   },
 };
 
@@ -2112,7 +2097,7 @@ function selRun() {
     h += `<div class="tablewrap">` + table(["Ranga", "Metoda", "L1 (im mniej, tym lepiej)", "Oceny", ""],
       r.ranking.map((mth) => { const i = r.variants.indexOf(mth);
         return [String(r.ranks[i]), esc(r.titles[mth]), fmt(r.scores.values[i], 3), esc(r.grade_sources[mth]),
-          BK.methods[mth] ? `<button class="btn small" data-use="${mth}">Użyj</button>` : "<span class='muted small'>pakiet mcdm_cd — zakładki obok</span>"]; }),
+          BK.methods[mth] ? `<button class="btn small" data-use="${mth}">Użyj</button>` : "<span class='muted small'>zakładki obok</span>"]; }),
       { raw: true, cellClass: (i, j) => (j === 1 ? "l" : "") + (i === 0 ? " hl" : "") }) + "</div>";
   }
   const el = Object.entries(r.elimination_reasons);

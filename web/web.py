@@ -1,26 +1,24 @@
-"""Most między stroną (JavaScript) a pakietem mcdm_cd w Pyodide. Wejście i wyjście: JSON."""
+"""Most między stroną (JavaScript) a pakietami mcdm_ryzyko i mcdm_book w Pyodide. Wejście i wyjście: JSON.
+
+Zakładki „Zadanie”, „StDom”, STEM-DPR, INSDECM i ATO-DPR korzystają z `mcdm_ryzyko` (rozkłady, dominacje
+stochastyczne, rozdz. 1.3 i 8.3–8.4) oraz `mcdm_book.ato_dpr` (rozdz. 8.5). Procedury są generatorami pytań;
+tu prowadzi je `mcdm_ryzyko.Sesja`, a pytania są tłumaczone na rodzaje obsługiwane przez stronę.
+"""
 from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 
-from mcdm_cd.distribution import PARAMS, Distribution, better
-from mcdm_cd.dominance import DARA, IDENTICAL, INARA, stdom_report, stochastic_dominance
-from mcdm_cd.ato_dpr import AtoDPR
-from mcdm_cd.insdecm import Insdecm
-from mcdm_cd.mcf import Problem, example as mcf_example, read_mcf
-from mcdm_cd.stem_dpr import StemDPR
+from mcdm_ryzyko import (OSLAB, PODTRZYMAJ, PRZERWIJ, ZAOSTRZ, BlednaOdpowiedz, Insdecm, Parametr, Postawa, Prog,
+                         RegulaDominacji, Relacja, RodzajParametru as RP, Rozklad, Sesja, StemDpr, Warunek,
+                         porownaj, porownaj_porzadkowo, wczytaj_mcf)
+from mcdm_ryzyko import insdecm as ins
+from mcdm_ryzyko import stem_dpr as stem
 
-DATA = Path(__file__).parent / "mcdm_cd" / "data"
-EXAMPLES = {
-    "przyklad_8_1": "przyklad_8_1.mcf — przykłady 8.1–8.4 (4 kryteria, 10 wariantów)",
-    "Przyklad_1": "Przyklad_1.mcf — przykład STEM-DPR z instrukcji MCDM (3 kryteria, 20 wariantów)",
-    "rozdz_10": "rozdz. 10 — 14 portfeli projektów (R10.3–R10.4, tabl. 10.4; 6 kryteriów)",
-    "przyklad_8_5": "przykład 8.5 (ATO-DPR) — jak 8.1, z zamienionymi rozkładami f1 wariantów a6 i a8",
-}
+from mcdm_book import ato_dpr as ato
+from mcdm_book.ryzyko import EXAMPLES, example as ryzyko_example
 
-S = {"problem": None, "method": None, "gen": None, "kind": None}
+S = {"problem": None, "method": None, "sesja": None, "kind": None, "pending": None, "iter": 0}
 
 
 def _f(x):
@@ -35,27 +33,18 @@ def _out(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
-def param_label(p: int, psi) -> str:
-    return _param_label(p, psi).replace(".", ",")
-
-
-def _param_label(p: int, psi) -> str:
-    if p == 7:
-        return f"Pr{{X ≤ {psi:g}}}"
-    if p == 8:
-        return f"Pr{{X ≥ {psi:g}}}"
-    if p in (3, 4, 5, 6):
-        return f"{PARAMS[p][0]} ({psi:g})"
-    return PARAMS[p][0]
+def _fmt(x) -> str:
+    return f"{float(x):g}".replace(".", ",")
 
 
 # ---------------------------------------------------------------------------
 # Dane
 # ---------------------------------------------------------------------------
 
-def _summary(p: Problem) -> dict:
-    return {"comment": p.comment, "source": p.source, "criteria": p.criteria, "maximize": p.maximize,
-            "variants": p.variants, "warnings": p.warnings, "n": p.n, "m": p.m}
+def _summary(p, source: str) -> dict:
+    return {"comment": "", "source": source, "criteria": [k.nazwa for k in p.kryteria],
+            "maximize": [k.maksymalizowane for k in p.kryteria], "variants": list(p.warianty), "warnings": [],
+            "n": p.m, "m": p.n}
 
 
 def examples() -> str:
@@ -65,233 +54,365 @@ def examples() -> str:
 def load_example(name: str) -> str:
     if name not in EXAMPLES:
         raise ValueError(f"Nieznany przykład {name}")
-    p = mcf_example(name)
-    p.source = {"przyklad_8_5": "przykład 8.5", "rozdz_10": "rozdz. 10 (R10.3–R10.5)"}.get(name, f"{name}.mcf")
-    S["problem"] = p
-    return _out(_summary(p))
+    S["problem"] = ryzyko_example(name)
+    source = {"przyklad_8_5": "przykład 8.5", "rozdz_10": "rozdz. 10 (R10.3–R10.5)"}.get(name, f"{name}.mcf")
+    return _out(_summary(S["problem"], source))
 
 
 def load_bytes(data, filename: str) -> str:
-    p = read_mcf(bytes(data))
-    p.source = filename
-    S["problem"] = p
-    return _out(_summary(p))
+    S["problem"] = wczytaj_mcf(bytes(data))
+    return _out(_summary(S["problem"], filename))
 
 
 def distributions(k: int) -> str:
     p = S["problem"]
-    vals = sorted({v for i in range(p.n) for v in p.dist[i][k].values})
+    vals = sorted({v for i in range(p.m) for v in p.ocena(i, k).wartosci})
     rows = []
     for v in vals:
-        rows.append([v] + [dict(zip(p.dist[i][k].values, p.dist[i][k].probs)).get(v, 0.0) for i in range(p.n)])
-    return _out({"criterion": p.criteria[k], "variants": p.variants, "rows": rows,
-                 "means": [p.dist[i][k].mean() for i in range(p.n)]})
+        rows.append([_f(v)] + [_f(dict(p.ocena(i, k).pary()).get(v, 0)) for i in range(p.m)])
+    return _out({"criterion": p.kryteria[k].nazwa, "variants": list(p.warianty), "rows": rows,
+                 "means": [_f(p.ocena(i, k).wartosc_oczekiwana()) for i in range(p.m)]})
 
 
 def variant_dist(i: int, k: int) -> str:
-    d = S["problem"].dist[i][k]
-    return _out({"values": list(d.values), "probs": list(d.probs)})
+    d = S["problem"].ocena(i, k)
+    return _out({"values": [_f(x) for x in d.wartosci], "probs": [_f(x) for x in d.prawdopodobienstwa]})
 
 
-def dominance_matrix(k: int, orient_min: bool = True) -> str:
-    """Arkusz „Wykryte dominacje” dla kryterium k: wiersz dominuje kolumnę."""
-    s = StemDPR(S["problem"], orient_min=orient_min)
-    lab = {7.0: "FSD", 6.0: "SSD", 4.0: "TSD", float(IDENTICAL): ""}
-    rows = [[lab.get(x, f"AFSD({x:.2f})".replace(".", ",") if x else "") for x in s.dom[k][i]] for i in range(s.p.n)]
-    return _out({"criterion": s.p.criteria[k], "variants": s.p.variants, "rows": rows})
+def dominance_matrix(k: int) -> str:
+    """Dominacje dla kryterium k (wiersz nad kolumną): FSD, SSD, TSD (awersja do ryzyka) albo AFSD(ε) dla ε < 0,5."""
+    p = S["problem"]
+    regula = RegulaDominacji.awersja()
+    rows = []
+    for i in range(p.m):
+        row = []
+        for j in range(p.m):
+            if i == j:
+                row.append("")
+                continue
+            w = p.porownanie(i, j, k)
+            r = regula.relacja(w)
+            if r is not None:
+                row.append(r.value)
+            elif w.eps_afsd is not None and w.eps_afsd < 0.5 - p.tolerancja:
+                row.append(f"AFSD({float(w.eps_afsd):.2f})".replace(".", ","))
+            else:
+                row.append("")
+        rows.append(row)
+    return _out({"criterion": p.kryteria[k].nazwa, "variants": list(p.warianty), "rows": rows})
 
 
 # ---------------------------------------------------------------------------
 # StDom — dwa rozkłady
 # ---------------------------------------------------------------------------
 
-def stdom(xv, xp, yv, yp, ordinal: bool, risk: str, almost: bool, almost_second: bool, quirk: bool) -> str:
-    x = Distribution.from_pairs(list(xv), list(xp))
-    y = Distribution.from_pairs(list(yv), list(yp))
-    lines = stdom_report(x, y, risk, almost=almost, almost_second=almost_second and ordinal,
-                         ordinal=ordinal, vba_param_quirk=quirk)
-    r = stochastic_dominance(x, y, DARA if ordinal else risk)
-    rows = []
-    for name, v in lines:
-        if name == "IDENTICAL":
-            rows.append(["—", "rozkłady identyczne"])
-        elif isinstance(v, bool):
-            rows.append([name, "zachodzi" if v else "nie zachodzi"])
-        else:
-            rows.append([name, f"zachodzi ze stopniem ε = {v:.4f}".replace(".", ",")])
-    g = r.grid
-    return _out({"rows": rows, "holds": r.holds, "grid": g, "cdf_x": [x.cdf(t) for t in g],
-                 "cdf_y": [y.cdf(t) for t in g], "mean_x": x.mean(), "mean_y": y.mean()})
+def stdom(xv, xp, yv, yp, ordinal: bool, risk: str, almost: bool, almost_second: bool) -> str:
+    """Czy X dominuje Y: relacje z tabl. 1.1 (zwykłe) albo 1.3 (porządkowe), stopnie ε z tabl. 1.2 / 1.4."""
+    xv, xp, yv, yp = list(xv), list(xp), list(yv), list(yp)
+    x, y = Rozklad(xv, xp), Rozklad(yv, yp)
+    rows, holds = [], {}
+    if ordinal:
+        skala = sorted(set(xv) | set(yv))
+        w = porownaj_porzadkowo(x, y, skala)
+        names = [Relacja.OFSD, Relacja.OSSD]
+    else:
+        w = porownaj(x, y)
+        names = list((Postawa.AWERSJA if risk == "DARA" else Postawa.SKLONNOSC).relacje)
+        holds = {r.value: r in w.definicje for r in (Relacja.FSD, Relacja.SSD, Relacja.TSD,
+                                                     Relacja.SISD, Relacja.TISD1, Relacja.TISD2)}
+    if x == y:
+        rows.append(["—", "rozkłady identyczne"])
+    else:
+        for r in names:
+            rows.append([r.value, "zachodzi" if r in w.definicje else "nie zachodzi"])
+        eps = []
+        if almost:
+            eps.append(("OAFSD" if ordinal else "AFSD", w.eps_afsd))
+        if almost_second or (almost and not ordinal and risk == "DARA"):
+            eps.append(("OASSD" if ordinal else "ASSD", w.eps_assd))
+        for name, e in eps:
+            rows.append([name, "—" if e is None else f"stopień naruszenia ε = {float(e):.4f}".replace(".", ",")])
+    grid = sorted(set(x.wartosci) | set(y.wartosci))
+    return _out({"rows": rows, "holds": holds, "grid": [_f(t) for t in grid],
+                 "cdf_x": [_f(x.dystrybuanta(t)) for t in grid], "cdf_y": [_f(y.dystrybuanta(t)) for t in grid],
+                 "mean_x": _f(x.wartosc_oczekiwana()), "mean_y": _f(y.wartosc_oczekiwana())})
 
 
 # ---------------------------------------------------------------------------
-# Dialogi STEM-DPR i INSDECM
+# Dialogi STEM-DPR, INSDECM i ATO-DPR
 # ---------------------------------------------------------------------------
 
-def _stem_it(s: StemDPR, it) -> dict:
-    p = s.p
-    return {"number": it.number, "trial": p.variants[it.trial],
-            "rows": [[p.criteria[k], _f(it.means[k]), _f(it.d[k]), _f(it.ideal[k]),
-                      it.active_criteria[k], "max" if p.maximize[k] else "min"] for k in range(p.m)],
-            "active_variants": [p.variants[i] for i in it.active_variants]}
+# Parametry rozkładu w INSDECM: kod → (rodzaj, nazwa, czy wymaga ψ).
+PARAMS = {
+    1: (RP.WARTOSC_OCZEKIWANA, "Wartość oczekiwana", False),
+    2: (RP.ODCHYLENIE_STD, "Odchylenie standardowe", False),
+    3: (RP.SEMIODCHYLENIE_STD_DOLNE, "Dolne semiodchylenie standardowe (od wartości oczekiwanej)", False),
+    4: (RP.SEMIODCHYLENIE_PRZECIETNE_DOLNE, "Dolne semiodchylenie przeciętne (od wartości oczekiwanej)", False),
+    5: (RP.P_NIE_WIECEJ, "Pr{X ≤ ψ}", True),
+    6: (RP.P_NIE_MNIEJ, "Pr{X ≥ ψ}", True),
+    7: (RP.MEDIANA, "Mediana", False),
+    8: (RP.KWARTYL_DOLNY, "Pierwszy kwartyl", False),
+    9: (RP.KWARTYL_GORNY, "Trzeci kwartyl", False),
+    10: (RP.KWANTYL, "Kwantyl rzędu ψ", True),
+    11: (RP.DOMINANTA, "Dominanta", False),
+    12: (RP.MINIMUM, "Najgorsza wartość (minimum)", False),
+    13: (RP.MAKSIMUM, "Najlepsza wartość (maksimum)", False),
+}
+_KOD = {v[0]: k for k, v in PARAMS.items()}
 
 
-def _pmatrix(s: Insdecm, P) -> dict:
+def _param(code: int, psi) -> Parametr:
+    rodzaj, _, needs = PARAMS[code]
+    return Parametr(rodzaj, float(psi) if needs else None)
+
+
+def _plabel(par: Parametr) -> str:
+    if par.rodzaj is RP.P_NIE_MNIEJ:
+        return f"Pr{{X ≥ {_fmt(par.prog)}}}"
+    if par.rodzaj is RP.P_NIE_WIECEJ:
+        return f"Pr{{X ≤ {_fmt(par.prog)}}}"
+    if par.rodzaj is RP.KWANTYL:
+        return f"kwantyl rzędu {_fmt(par.prog)}"
+    return PARAMS[_KOD[par.rodzaj]][1]
+
+
+def _orig(k: int, x):
+    """Wartość z orientacji „więcej = lepiej” w jednostkach kryterium."""
+    return _f(S["problem"].kryteria[k].z_orientacji(x))
+
+
+def _stem_it(st) -> dict:
+    p = S["problem"]
+    return {"number": st.iteracja, "trial": p.warianty[st.proba],
+            "rows": [[p.kryteria[k].nazwa, _orig(k, st.mu_proby[k]), _f(st.d_proby[k]), _orig(k, st.idealny[k]),
+                      k in st.aktywne, "max" if p.kryteria[k].maksymalizowane else "min"] for k in range(p.n)],
+            "active_variants": [p.warianty[i] for i in st.warianty]}
+
+
+def _pmatrix(P) -> dict:
     if P is None:
         return None
-    return {"cols": [[s.p.criteria[k], param_label(p, psi)] for k, p, psi in P.columns],
-            "pessimistic": [_f(v) for v in P.pessimistic], "optimistic": [_f(v) for v in P.optimistic]}
+    p = S["problem"]
+    return {"cols": [[p.kryteria[k].nazwa, _plabel(par)] for k, par in P.kolumny],
+            "pessimistic": [_f(v) for v in P.pesymistyczne], "optimistic": [_f(v) for v in P.optymistyczne]}
 
 
-def _ins_it(s: Insdecm, it) -> dict:
-    return {"number": it.number, "active": [s.p.variants[i] for i in it.active],
-            "P": _pmatrix(s, it.P), "P_next": _pmatrix(s, it.P_next), "log": list(it.log)}
+def _ato_it(it) -> dict:
+    p = S["problem"]
+    return {"number": it.number, "trial": p.warianty[it.trial],
+            "rows": [[p.kryteria[k].nazwa, _f(it.means[k]), _f(it.ideal[k]),
+                      "max" if p.kryteria[k].maksymalizowane else "min"] for k in range(p.n)],
+            "active_variants": [p.warianty[i] for i in it.active_variants]}
 
 
-def _question(q) -> dict:
-    s = S["method"]
-    p = s.p
-    a = q.args
-    out = {"kind": q.kind}
-    if S["kind"] == "ato":
-        it = a[0]
-        out["it"] = _ato_it(s, it)
-        if q.kind == "satisfied" and it.number == 1:
-            out["first_d"] = [[p.variants[j]] + [_f(x) for x in s.first_d[j]] for j in range(p.n)]
-            out["criteria"] = p.criteria
-        if q.kind == "satisfied" and it.number > 1:
-            out["prev"] = _ato_steps(s, s.history[-2])
-        if q.kind == "order":
-            out["criteria"] = p.criteria
-        if q.kind == "relax":
-            out["criterion"] = p.criteria[a[1]]
-        return out
-    if S["kind"] == "stem":
-        it = a[0]
-        out["it"] = _stem_it(s, it)
-        if q.kind == "choose_criterion":
-            out["candidates"] = [[k, p.criteria[k]] for k in a[1]]
-        elif q.kind == "threshold":
-            k = a[1]
-            out.update(k=k, criterion=p.criteria[k], maximize=p.maximize[k], default=_f(a[2]))
-        return out
-    # INSDECM
-    if q.kind == "parameters":
-        k, cur = a
-        out.update(k=k, criterion=p.criteria[k], current={str(pp): psi for pp, psi in cur.items()},
-                   params=[[pp, PARAMS[pp][1], PARAMS[pp][2]] for pp in range(2, 14)])
-        return out
-    if q.kind == "accept_solution":
-        R = a[0]
-        cols = None
-        rows = []
-        for i, row in R.items():
-            keys = sorted(row)
-            cols = cols or keys
-            rows.append([p.variants[i]] + [_f(row[c]) for c in keys])
-        out["R"] = {"iteration": s.iteration,
-                    "cols": [[p.criteria[k], param_label(pp, s.params[k].get(pp))] for k, pp in (cols or [])],
-                    "rows": rows}
-        return out
-    it = a[0]
-    out["it"] = _ins_it(s, it)
-    if q.kind == "condition":
-        pes = {(k, pp): v for (k, pp, _), v in zip(it.P.columns, it.P.pessimistic)}
-        crits = []
-        for k in range(p.m):
-            opts = []
-            for pp, psi in sorted(s.params[k].items()):
-                opts.append({"p": pp, "label": param_label(pp, psi), "pessimistic": _f(pes.get((k, pp))),
-                             "higher_better": better(pp, p.maximize[k]) > 0})
-            crits.append({"k": k, "name": p.criteria[k], "params": opts})
-        out["criteria"] = crits
-    elif q.kind == "inconsistency_action":
-        inc = a[1]
-        out["inc"] = {"i": p.variants[inc.i], "j": p.variants[inc.j], "eps": _f(inc.eps)}
-    elif q.kind == "accept_proposal":
-        prop = a[1]
-        c = it.condition
-        out["proposal"] = {"criterion": p.criteria[c.k], "param": param_label(c.p, prop["psi"]),
-                           "action": prop["action"], "value": _f(prop["value"]),
-                           "value_other": _f(prop.get("value_other"))}
-    return out
-
-
-def _ato_it(s: AtoDPR, it) -> dict:
-    p = s.p
-    return {"number": it.number, "trial": p.variants[it.trial],
-            "rows": [[p.criteria[k], _f(it.means[k]), _f(it.ideal[k]), "max" if p.maximize[k] else "min"]
-                     for k in range(p.m)],
-            "active_variants": [p.variants[i] for i in it.active_variants]}
-
-
-def _ato_steps(s: AtoDPR, it) -> dict:
-    p = s.p
-    V = lambda xs: [p.variants[i] for i in xs]
-    return {"number": it.number, "order": [p.criteria[k] for k in it.order or []],
+def _ato_steps(it) -> dict:
+    p = S["problem"]
+    V = lambda xs: [p.warianty[i] for i in xs]
+    return {"number": it.number, "order": [p.kryteria[k].nazwa for k in it.order or []],
             "candidates": V(it.candidates or []), "relaxed": it.relaxed, "arbitrary": it.arbitrary,
-            "steps": [{"rule": st.rule, "criteria": [p.criteria[k] for k in st.criteria], "before": V(st.before),
-                       "removed": [[p.variants[i], [[p.variants[j], t] for j, t in by]] for i, by in st.removed.items()],
+            "steps": [{"rule": st.rule, "criteria": [p.kryteria[k].nazwa for k in st.criteria], "before": V(st.before),
+                       "removed": [[p.warianty[i], [[p.warianty[j], t] for j, t in by]] for i, by in st.removed.items()],
                        "after": V(st.after)} for st in it.steps]}
 
 
-def _result(r) -> dict:
-    s = S["method"]
-    p = s.p
-    if S["kind"] == "ato":
-        return {"done": True, "status": r.status, "solution": None if r.solution is None else p.variants[r.solution],
-                "prev": _ato_steps(s, r.iterations[-2]) if len(r.iterations) > 1 and r.iterations[-2].order else None}
-    if S["kind"] == "stem":
-        return {"done": True, "status": r.status,
-                "solution": None if r.solution is None else p.variants[r.solution]}
-    return {"done": True, "status": r.status, "solutions": [p.variants[i] for i in r.solutions]}
-
-
-def _step(answer, first=False) -> str:
-    try:
-        q = next(S["gen"]) if first else S["gen"].send(answer)
-    except StopIteration as e:
-        S["gen"] = None
-        return _out(_result(e.value))
-    return _out(_question(q))
-
-
-def start(kind: str, orient_min: bool = True, vba_compat: bool = False, options: str = "{}") -> str:
+def _ins_criteria(P) -> list:
+    """Kryteria i parametry do pytania o dodatkowy warunek (indeks parametru w obrębie kryterium)."""
     p = S["problem"]
+    crits = []
+    for k in range(p.n):
+        opts = [{"p": idx, "label": _plabel(par), "pessimistic": _f(pes), "higher_better": par.wyzsze_lepsze}
+                for idx, ((kk, par), pes) in enumerate((c, v) for c, v in zip(P.kolumny, P.pesymistyczne) if c[0] == k)]
+        if opts:
+            crits.append({"k": k, "name": p.kryteria[k].nazwa, "params": opts})
+    return crits
+
+
+def _question() -> dict:
+    """Bieżące pytanie sesji (albo pytanie pomocnicze mostu) w postaci dla strony."""
+    p = S["problem"]
+    pend = S["pending"]
+    if pend is not None:                                # pytania mostu rozbijające jedno pytanie procedury
+        return pend["view"]
+    q = S["sesja"].pytanie
+    kind = S["kind"]
     if kind == "ato":
-        o = json.loads(options or "{}")
-        S["method"] = AtoDPR(p, risk=o.get("risk", DARA), dominances=o.get("dominances"),
-                             almost=bool(o.get("almost", True)), tradeoff_rules=o.get("tradeoff_rules", ["FSD"]))
+        it = q.iteracja
+        if isinstance(q, ato.PytanieSatysfakcjaAto):
+            out = {"kind": "satisfied", "it": _ato_it(it)}
+            if it.number == 1:
+                out["first_d"] = [[p.warianty[j]] + [_f(x) for x in S["method"].first_d[j]] for j in range(p.m)]
+                out["criteria"] = [k.nazwa for k in p.kryteria]
+            else:
+                out["prev"] = _ato_steps(S["method"].history[-2])
+            return out
+        if isinstance(q, ato.PytanieKolejnosc):
+            return {"kind": "order", "it": _ato_it(it), "criteria": [k.nazwa for k in p.kryteria]}
+        return {"kind": "relax", "it": _ato_it(it), "criterion": p.kryteria[q.k].nazwa}
+    if kind == "stem":
+        if isinstance(q, stem.PytanieSatysfakcja):
+            return {"kind": "satisfied", "it": _stem_it(q.stan)}
+        if isinstance(q, stem.PytanieKryteriumSatysfakcjonujace):
+            return {"kind": "some_criterion_satisfactory", "it": _stem_it(q.stan)}
+        if isinstance(q, stem.PytanieProg):            # najpierw kryterium, potem próg (dwa pytania strony)
+            view = {"kind": "choose_criterion", "it": _stem_it(q.stan),
+                    "candidates": [[k, p.kryteria[k].nazwa] for k in range(p.n)]}
+            S["pending"] = {"kind": "choose_criterion", "view": view, "stan": q.stan}
+            return view
+        raise TypeError(type(q))
+    # INSDECM
+    if isinstance(q, ins.PytanieParametry):
+        biezace = q.biezace or {}
+        S["pending"] = {"kind": "parameters", "k": 0, "answers": {}, "biezace": biezace}
+        return _ins_params_view()
+    if isinstance(q, ins.PytanieDaneWystarczajace):
+        S["iter"] = q.iteracja
+        log = ["Zmieniono parametry"] if S.get("changed") else []
+        S["changed"] = False
+        return {"kind": "parameters_sufficient",
+                "it": {"number": q.iteracja, "active": [p.warianty[i] for i in q.macierz.warianty],
+                       "P": _pmatrix(q.macierz), "P_next": None, "log": log}}
+    if isinstance(q, ins.PytaniePesymistyczne):
+        return {"kind": "pessimistic_satisfactory", "it": {"number": q.iteracja, "P": _pmatrix(q.macierz)}}
+    if isinstance(q, ins.PytanieWarunek):
+        return {"kind": "condition", "criteria": _ins_criteria(q.macierz)}
+    if isinstance(q, ins.PytanieAkceptacjaZmian):
+        return {"kind": "accept_changes", "it": {"number": S["iter"], "P_next": _pmatrix(q.po)},
+                "condition": q.warunek.opis(p.kryteria[q.warunek.k].nazwa)}
+    if isinstance(q, ins.PytanieNiespojnosc):
+        pr = q.prezentacja
+        return {"kind": "inconsistency_action",
+                "inc": {"i": p.warianty[pr.i], "j": p.warianty[pr.j], "eps": _f(q.eps),
+                        "criterion": p.kryteria[pr.k].nazwa,
+                        "points": [_f(x) for x in pr.punkty], "pi": [_f(x) for x in pr.wartosci_i],
+                        "pj": [_f(x) for x in pr.wartosci_j]}}
+    if isinstance(q, ins.PytaniePropozycja):
+        return {"kind": "accept_proposal", "weaken": q.oslabienie,
+                "proposals": [w.opis(p.kryteria[w.k].nazwa).replace(".", ",") for w in q.propozycje]}
+    if isinstance(q, ins.PytanieRozwiazanie):
+        R = q.macierz
+        return {"kind": "accept_solution",
+                "R": {"iteration": S["iter"], "cols": [[p.kryteria[k].nazwa, _plabel(par)] for k, par in R.kolumny],
+                      "rows": [[p.warianty[i]] + [_f(v) for v in row] for i, row in zip(R.warianty, R.wiersze)]},
+                "variants": [[i, p.warianty[i]] for i in R.warianty]}
+    raise TypeError(type(q))
+
+
+def _ins_params_view() -> dict:
+    p = S["problem"]
+    pend = S["pending"]
+    k = pend["k"]
+    cur = {}
+    for par in pend["biezace"].get(k, ()):
+        cur[str(_KOD[par.rodzaj])] = _f(par.prog)
+    view = {"kind": "parameters", "k": k, "criterion": p.kryteria[k].nazwa, "current": cur,
+            "params": [[c, name, needs] for c, (_, name, needs) in PARAMS.items() if c != 1]}
+    pend["view"] = view
+    return view
+
+
+def _result(r) -> dict:
+    p = S["problem"]
+    status = {"zaakceptowano": "final", "brak_rozwiazania": "impossible", "przerwano": "cancelled",
+              "final": "final", "impossible": "impossible", "cancelled": "cancelled"}[r.status]
+    if S["kind"] == "ato":
+        sol = getattr(r, "solution", None)
+        its = getattr(r, "iterations", [])
+        return {"done": True, "status": status, "solution": None if sol is None else p.warianty[sol],
+                "prev": _ato_steps(its[-2]) if len(its) > 1 and its[-2].order else None}
+    sol = r.rozwiazanie
+    if S["kind"] == "stem":
+        return {"done": True, "status": status, "solution": None if sol is None else p.warianty[sol]}
+    return {"done": True, "status": status, "solutions": [] if sol is None else [p.warianty[sol]]}
+
+
+def _next(answer=None, *, first=False, error=None) -> str:
+    s = S["sesja"]
+    if not first:
+        try:
+            s.odpowiedz(answer)
+        except BlednaOdpowiedz as e:
+            error = str(e)
+    if s.zakonczona:
+        return _out(_result(s.wynik))
+    out = _question()
+    if error:
+        out = dict(out, error=error)
+    return _out(out)
+
+
+def start(kind: str, options: str = "{}") -> str:
+    p = S["problem"]
+    o = json.loads(options or "{}")
+    if kind == "ato":
+        m = ato.AtoDPR(p, risk=o.get("risk", "DARA"), dominances=o.get("dominances"),
+                       almost=bool(o.get("almost", True)), tradeoff_rules=o.get("tradeoff_rules", ["FSD"]))
+        gen = m.dialog()
     elif kind == "stem":
-        o = json.loads(options or "{}")
-        S["method"] = StemDPR(p, orient_min=orient_min,
-                              relations=o.get("relations") or ("FSD", "SSD", "TSD", "AFSD"))
+        rel = [r.strip() for r in (o.get("relations") or ["FSD", "SSD", "TSD", "AFSD"]) if r.strip()]
+        regula = RegulaDominacji.awersja(relacje=tuple(Relacja[r] for r in rel if r != "AFSD"), afsd="AFSD" in rel)
+        m = StemDpr(p, regula, pytaj_o_informacje=False)
+        gen = m.przebieg()
     elif kind == "insdecm":
-        S["method"] = Insdecm(p, orient_min=orient_min, vba_compat=vba_compat)
+        m = Insdecm(p, RegulaDominacji.awersja())
+        gen = m.przebieg()
     else:
         raise ValueError(kind)
-    S["kind"] = kind
-    S["gen"] = S["method"].dialog()
-    return _step(None, first=True)
+    S.update(method=m, kind=kind, pending=None, iter=0, changed=False)
+    S["sesja"] = Sesja(gen)
+    return _next(first=True)
 
 
 def answer(payload: str) -> str:
-    """payload: JSON {"kind": ..., "value": ...}; wartość przekształcana do typu oczekiwanego przez metodę."""
+    """payload: JSON {"kind": ..., "value": ...}; wartość przekształcana do typu oczekiwanego przez procedurę.
+    null przy pytaniach tak/nie, warunku, porządku kryteriów i wyborze kryterium oznacza „Anuluj”."""
     a = json.loads(payload)
     kind, v = a["kind"], a.get("value")
-    if kind == "parameters":
-        v = {int(pp): (None if psi is None else float(psi)) for pp, psi in (v or {}).items()}
-    elif kind == "condition" and v is not None:
-        v = (int(v[0]), int(v[1]), float(v[2]))
-    elif kind == "order" and v is not None:
-        v = [int(k) for k in v]
-    elif kind in ("choose_criterion",) and v is not None:
-        v = int(v)
-    elif kind == "threshold":
-        v = float(v)
-    elif kind == "inconsistency_action":
-        v = int(v)
-    return _step(v)
+    pend = S["pending"]
+    p = S["problem"]
+    if pend is not None and kind == "choose_criterion":
+        if v is None:
+            S["pending"] = None
+            return _next(PRZERWIJ)
+        k = int(v)
+        st = pend["stan"]
+        view = {"kind": "threshold", "it": _stem_it(st), "k": k, "criterion": p.kryteria[k].nazwa,
+                "maximize": p.kryteria[k].maksymalizowane, "default": _orig(k, st.idealny[k])}
+        S["pending"] = {"kind": "threshold", "view": view, "k": k, "stan": st}
+        return _out(view)
+    if pend is not None and kind == "threshold":
+        k = pend["k"]
+        S["pending"] = None
+        out = json.loads(_next(Prog(k, p.kryteria[k].zorientuj(float(v)))))
+        if out.get("error") and not out.get("done"):        # zły próg: wróć do pytania o próg tego kryterium
+            S["pending"] = pend
+            out = dict(pend["view"], error=out["error"])
+        return _out(out)
+    if pend is not None and kind == "parameters":
+        lst = [Parametr(RP.WARTOSC_OCZEKIWANA)] + [_param(int(c), psi) for c, psi in sorted((v or {}).items(), key=lambda t: int(t[0]))]
+        pend["answers"][pend["k"]] = lst
+        if pend["k"] + 1 < p.n:
+            pend["k"] += 1
+            return _out(_ins_params_view())
+        S["pending"] = None
+        S["changed"] = bool(pend["biezace"])
+        return _next(pend["answers"])
+    if kind in ("satisfied", "some_criterion_satisfactory", "parameters_sufficient", "pessimistic_satisfactory",
+                "accept_changes", "relax"):
+        return _next(PRZERWIJ if v is None else bool(v))
+    if kind == "order":
+        return _next(PRZERWIJ if v is None else [int(x) for x in v])
+    if kind == "condition":
+        if v is None:
+            return _next(PRZERWIJ)
+        k, idx, granica = int(v[0]), int(v[1]), float(v[2])
+        q = S["sesja"].pytanie
+        par = [par for kk, par in q.macierz.kolumny if kk == k][idx]
+        return _next(Warunek(k, par, granica))
+    if kind == "inconsistency_action":
+        return _next({0: PODTRZYMAJ, 1: OSLAB, 2: ZAOSTRZ}[int(v)])
+    if kind in ("accept_proposal", "accept_solution"):
+        return _next(None if v is None else int(v))
+    raise ValueError(f"Nieoczekiwana odpowiedź {kind!r}")
 
 
 # ---------------------------------------------------------------------------

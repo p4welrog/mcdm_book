@@ -1,4 +1,4 @@
-"""Składa index.html: szablon + źródła pakietów mcdm_book i mcdm_cd, most web.py, xlrd, pliki .mcf z płyty
+"""Składa index.html: szablon + źródła pakietów mcdm_book i mcdm_ryzyko, most web.py, xlrd, pliki .mcf z płyty
 i mapa kotwic transkrypcji książki (book_anchors.json).
 
 python web/build.py            → index.html w katalogu głównym repozytorium
@@ -12,12 +12,12 @@ HERE = Path(__file__).parent
 ROOT = HERE.parent
 
 files = {}
-for pkg in ("mcdm_cd", "mcdm_book"):
-    for f in sorted((ROOT / pkg).glob("*.py")):
-        if f.name != "__main__.py":
-            files[f"{pkg}/{f.name}"] = {"text": f.read_text(encoding="utf-8")}
-for f in sorted((ROOT / "mcdm_cd" / "data").glob("*.mcf")) + sorted((ROOT / "mcdm_cd" / "data").glob("*.json")):
-    files[f"mcdm_cd/data/{f.name}"] = {"b64": base64.b64encode(f.read_bytes()).decode()}
+for pkg in ("mcdm_ryzyko", "mcdm_book"):
+    for f in sorted((ROOT / pkg).rglob("*.py")):
+        if f.name != "__main__.py" and "__pycache__" not in f.parts:
+            files[f.relative_to(ROOT).as_posix()] = {"text": f.read_text(encoding="utf-8")}
+for f in sorted((ROOT / "mcdm_book" / "data").glob("*.mcf")) + sorted((ROOT / "mcdm_book" / "data").glob("*.json")):
+    files[f"mcdm_book/data/{f.name}"] = {"b64": base64.b64encode(f.read_bytes()).decode()}
 files["web.py"] = {"text": (HERE / "web.py").read_text(encoding="utf-8")}
 with zipfile.ZipFile(next((HERE / "vendor").glob("xlrd-*.whl"))) as z:
     for n in z.namelist():
