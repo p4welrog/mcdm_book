@@ -451,7 +451,6 @@ def electre_i_sd(p: Problem, s: float = 1.0, risk: str = "DARA", dominances: Opt
     dla par z c_E < s w obu kierunkach; pary niejasne: c_E < s ≤ c_E + c_N (krok 4). include_unclear=True włącza
     je do relacji przewyższania (gdy decydent rozstrzygnie je na korzyść aⁱ)."""
     from .promethee import _dominance_test, _distribution
-    from mcdm_cd import Distribution
     notes: list = []
     s = _check_s(s)
     w = p.weights(notes=notes)
@@ -460,8 +459,7 @@ def electre_i_sd(p: Problem, s: float = 1.0, risk: str = "DARA", dominances: Opt
     for k, c in enumerate(p.criteria):
         if not c.maximize:
             for i in range(m):
-                d = F[i][k]
-                F[i][k] = Distribution.from_pairs([-x for x in d.values], list(d.probs))
+                F[i][k] = F[i][k].odwrocony()
     allowed, test_t = _dominance_test(risk, dominances)
     other = "INARA" if risk == "DARA" else "DARA"
     _, test_any = _dominance_test(other, None)
