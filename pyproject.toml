@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "mcdm-book"
 version = "0.1.0"
 description = "Metody wielokryterialnego wspomagania decyzji z książki pod red. T. Trzaskalika (PWE 2014): interfejs JSON"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
@@ -14,7 +14,8 @@ test = ["pytest"]
 mcf = ["xlrd>=2"]
 
 [tool.setuptools]
-packages = ["mcdm_book", "mcdm_cd"]
+packages = ["mcdm_book", "mcdm_ryzyko", "mcdm_ryzyko.dominacje"]
 
 [tool.setuptools.package-data]
-mcdm_cd = ["data/*.mcf", "data/*.json"]
+mcdm_book = ["data/*.mcf", "data/*.json"]
+mcdm_ryzyko = ["*.md"]

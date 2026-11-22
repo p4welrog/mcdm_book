@@ -319,18 +319,7 @@ def exprom_veto(p: Problem, veto_direction: str = "formula", divide: bool = Fals
 # Wersje stochastyczne (6.6, 6.7)
 # ---------------------------------------------------------------------------
 
-def _distribution(v: Any, where: str):
-    from mcdm_cd import Distribution
-    try:
-        if isinstance(v, dict):
-            if "obs" in v:
-                return Distribution.from_observations(v["obs"])
-            return Distribution.from_pairs(v["values"], v["probs"])
-        if isinstance(v, (list, tuple)) and v and all(isinstance(x, (int, float)) for x in v):
-            return Distribution.from_observations(v)
-    except (KeyError, ValueError, TypeError) as e:
-        raise ProblemError(f"{where}: niepoprawny rozkład ({e})")
-    raise ProblemError(f"{where}: oczekiwano rozkładu {{\"values\": [...], \"probs\": [...]}} albo {{\"obs\": [...]}}")
+from .ryzyko import rozklad as _distribution, dominance_test as _dominance_test, srednia as _mean  # noqa: E402
 
 
 def _threshold_fn(c, key, required) -> Optional[Callable[[float], float]]:
@@ -348,47 +337,6 @@ def _threshold_fn(c, key, required) -> Optional[Callable[[float], float]]:
     return lambda mu: x
 
 
-def _dominance_test(risk: str, dominances: Optional[Sequence[str]]):
-    from mcdm_cd import afsd, assd, stochastic_dominance
-    if risk not in RISKS:
-        raise ProblemError(f"risk: {', '.join(RISKS)}")
-    allowed = list(dominances) if dominances else (["FSD", "SSD", "TSD"] if risk == "DARA"
-                                                   else ["FSD", "SISD", "TISD1", "TISD2"])
-    exact, almost = [], []
-    for a in allowed:
-        name, _, eps = str(a).partition(":")
-        name = name.strip().upper()
-        if name in ("AFSD", "ASSD"):
-            try:
-                almost.append((name, float(eps)))
-            except ValueError:
-                raise ProblemError(f"dominances: {a!r} — podaj stopień, np. \"AFSD:0.333\"")
-        elif name in ("FSD", "SSD", "TSD", "SISD", "TISD1", "TISD2"):
-            exact.append(name)
-        else:
-            raise ProblemError(f"dominances: nieznana dominacja {a!r}")
-
-    def test(x, y) -> Optional[str]:
-        rd = stochastic_dominance(x, y, "DARA")
-        if rd.identical:
-            return None
-        ri = None
-        for nme in exact:
-            if nme in ("FSD", "SSD", "TSD"):
-                if rd.holds.get(nme):
-                    return nme
-            else:
-                ri = ri or stochastic_dominance(x, y, "INARA")
-                if ri.holds.get(nme):
-                    return nme
-        for nme, eps in almost:
-            e = afsd(x, y) if nme == "AFSD" else assd(x, y)
-            if e is not None and e <= eps + _TOL:
-                return f"{nme}({e:.3f})"
-        return None
-    return allowed, test
-
-
 def _stochastic_core(p: Problem, risk, dominances, notes):
     w = p.weights(notes=notes)
     m, n = p.m, p.n
@@ -396,11 +344,9 @@ def _stochastic_core(p: Problem, risk, dominances, notes):
          for i in range(m)]
     for k, c in enumerate(p.criteria):
         if not c.maximize:
-            from mcdm_cd import Distribution
             for i in range(m):
-                d = F[i][k]
-                F[i][k] = Distribution.from_pairs([-x for x in d.values], list(d.probs))
-    mu = [[F[i][k].mean() for k in range(n)] for i in range(m)]
+                F[i][k] = F[i][k].odwrocony()
+    mu = [[_mean(F[i][k]) for k in range(n)] for i in range(m)]
     allowed, test = _dominance_test(risk, dominances)
     SD = [[[test(F[i][k], F[j][k]) if i != j else None for j in range(m)] for i in range(m)] for k in range(n)]
     qf = [_threshold_fn(c, "q", False) for c in p.criteria]

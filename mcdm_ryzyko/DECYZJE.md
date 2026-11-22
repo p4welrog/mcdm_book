@@ -1,0 +1,80 @@
+# Decyzje interpretacyjne
+
+Format wpisu: data — miejsce w książce (rozdział, wzór, strona) — problem — decyzja — uzasadnienie.
+
+## 2026-11-22 — ustalenia wstępne (zatwierdzone przez Pawła)
+
+- **Nazwy w API** — cały pakiet — język identyfikatorów — polskie nazwy bez znaków diakrytycznych (`Rozklad`, `wartosc_oczekiwana`) — nazwy odpowiadają pojęciom z książki, docstringi i tak są po polsku.
+- **Dane testowe** — `tests/dane/` — pakiet będzie publiczny, `zrodla/` nie — do testów przenoszone są wyłącznie liczby (rozkłady, wyniki z druku) w plikach JSON z polem `zrodlo`, bez tekstu książki — testy muszą działać bez prywatnego katalogu.
+- **Kierunek górnych semiodchyleń** — rozdz. 8.4, s. 161; instrukcja MCDM, rozdz. 4.2.1 — żadne źródło nie mówi, czy wyższe górne semiodchylenie jest dla decydenta lepsze, czy gorsze (zbiory Q_1/Q_2) — kierunek podaje decydent przy wyborze parametru; bez niego `Parametr` zgłasza błąd — dla pozostałych parametrów kierunek wynika z ich sensu: odchylenie standardowe i dolne semiodchylenia „mniej = lepiej”, zgodnie ze zrzutem w instrukcji MCDM, rozdz. 4.2.5 („odchylenie standardowe <= 13,94” jako osłabienie warunku).
+- **Osłabianie i zaostrzanie warunku** — rozdz. 8.4, krok 12; instrukcja MCDM, rozdz. 4.2.5 — książka nie podaje, jak wyznaczyć propozycje — dla pary (a^i, a^j) z 𝒩: osłabienie przesuwa próg do wartości parametru a^i (oba warianty spełniają warunek), zaostrzenie zamienia warunek na ostry na wartości parametru a^j (oba odpadają); dla prawdopodobieństw dodatkowo wariant ze zmianą progu wartości zmiennej — instrukcja wymienia dwie opcje dla prawdopodobieństw (próg prawdopodobieństwa albo wartość zmiennej losowej).
+
+## 2026-11-22 — rozkłady i parametry (`rozklad.py`, `parametry.py`)
+
+- **Wartości o zerowym prawdopodobieństwie** — format `.mcf` (plik `dane/Przyklad_1.mcf`: rozkłady dopełnione parami (0; 0)) — takie pary zmieniałyby minimum, maksimum i przedział [α, β] — są pomijane przy tworzeniu `Rozklad` — nie należą do nośnika rozkładu; definicje z tabl. 1.1 dotyczą zbioru wartości przyjmowanych przez zmienną.
+- **Suma prawdopodobieństw** — instrukcja MCDM, rozdz. 2.3; instrukcja StDom, rozdz. 3.3 i 3.6 — dane z arkuszy mają błędy zaokrągleń — dopuszczalne odchylenie sumy od 1 wynosi 1e-6 — StDom podaje taką dokładność porównań.
+- **Kwantyl rozkładu dyskretnego** — rozdz. 8.3 (s. 157), 8.4 (s. 161), instrukcja MCDM (mediana, kwartyle) — brak definicji — kwantyl rzędu q to najmniejsze x, dla którego F(x) ≥ q (uogólniona odwrotność dystrybuanty); mediana i kwartyle to kwantyle rzędu 1/2, 1/4, 3/4 — standardowa definicja dla rozkładów dyskretnych; daje zawsze wartość z nośnika. Na zrzutach w przykładzie 8.4 opcje te są nieaktywne, więc nie ma z czym porównać.
+- **Dominanta przy kilku modach** — rozdz. 8.3, s. 157 („modę”) — moda może nie być jednoznaczna — `dominanta()` zwraca najmniejszą z nich, `dominanty()` wszystkie — zachowawczo (dla kryterium maksymalizowanego najgorsza z mod).
+- **Semiodchylenia** — rozdz. 8.4, s. 161; instrukcja MCDM, rozdz. 4.2.1 („od wartości”) — książka podaje tylko nazwy — dolne semiodchylenie standardowe √Σ_{x<t} p(t−x)², górne √Σ_{x>t} p(x−t)², przeciętne bez kwadratu i pierwiastka; punkt odniesienia t podaje decydent, domyślnie t = μ — semiwariancja według Markowitza (1959); pole wartości przy tych parametrach w formatce MCDM wskazuje na punkt odniesienia wybierany przez użytkownika.
+- **Odchylenie standardowe** — j.w. — rozkład czy próba — σ liczone dla rozkładu (bez poprawki n−1) — oceny są rozkładami prawdopodobieństwa, nie próbami.
+- **Kryterium minimalizowane** — rozdz. 10.3, tabl. 10.5 — sposób porównywania — rozkład zmiennej −X (`Rozklad.odwrocony`); parametry liczone na rozkładzie zorientowanym („wyższe lepsze”) — tak postępuje rozdz. 10 (wartości ujemne w tabl. 10.6–10.13, parametr „min” jako najgorsza ocena).
+
+## 2026-11-22 — dominacje kardynalne (`dominacje/kardynalne.py`, `dominacje/relacje.py`)
+
+- **Przedział [a, b]** — tabl. 1.1 („przyjmujących skończoną liczbę wartości ze zbioru [a, b]”) — książka nie mówi, jak wybrać a i b dla pary rozkładów — a i b to najmniejsza i największa wartość sumy nośników obu rozkładów — poza tym przedziałem η⁽¹⁾ = η̄⁽¹⁾ = 0, więc wybór szerszego przedziału nie zmienia warunków; tak liczone są przykłady 1.2-1.10 (całki od najmniejszej wartości).
+- **Sprawdzanie „dla każdego x”** — wzory 1.21-1.26 — warunki dotyczą całego przedziału — funkcje η są reprezentowane dokładnie jako odcinkowe wielomiany stopnia ≤ 2; sprawdzane są końce odcinków i wierzchołek paraboli wewnątrz odcinka (η⁽³⁾, η̄⁽³⁾) — dla funkcji liniowych i kwadratowych to wystarcza; przy danych w `Fraction` wynik jest dokładny.
+- **Tolerancja** — instrukcja StDom, rozdz. 3.6 — porównania z zerem na liczbach zmiennoprzecinkowych — domyślnie 1e-6 (parametr `tolerancja`), także przy warunku ∃x: F_i(x) ≠ F_j(x) — dokładność porównań podana dla StDom.
+- **Warunek μ_i ≥ μ_j dla TSD, TISD1, TISD2** — tabl. 1.1, tw. 1.6, 1.8, 1.9 — definicje (1.23), (1.25), (1.26) nie zawierają warunku średniej, twierdzenia o zgodności z oczekiwaną użytecznością go wymagają — domyślnie sprawdzana jest sama definicja; `warunek_sredniej=True` dodaje warunek z twierdzenia — CLAUDE.md każe liczyć według definicji; przykłady z płyty stosują samą definicję: 1.4 (TSD przy μ_1 = 2,48 < μ_2 = 2,58), 1.8 (TISD2 przy μ_1 = −2,8 < μ_2 = −2,6), 8.1 (tablice 5 i 6, zob. ROZBIEZNOSCI.md). Przy włączonym warunku wszystkie trzy przykłady dają inny wynik.
+- **Najsilniejsza relacja** — rozdz. 1.3.1; instrukcja StDom, rozdz. 1.3 (ścieżki obliczeń) — kolejność sprawdzania — awersja: FSD → SSD → TSD; skłonność: FSD → SISD → TISD1 → TISD2 — kolejność grup z rozdz. 1.3.1 i ścieżek StDom; TISD1 i TISD2 są tego samego stopnia, pierwszeństwo TISD1 wynika tylko z kolejności.
+
+## 2026-11-22 — dane z rozdz. 10 (`tests/dane/rozdzial_10.json`)
+
+- **Pominięte wiersze R10.4** — płyta CD, zbiór R10.4 (w druku „…” w miejscu wartości od −484 do −453 i od −387 do −373) — czy brakuje tam prawdopodobieństw — przyjęto, że pominięte wiersze mają prawdopodobieństwo 0 — w każdym z 14 portfeli suma wydrukowanych prawdopodobieństw wynosi dokładnie 1.
+- **Rozkłady f3-f6** — rozdz. 10.3 (zasady konstrukcji, tabl. 10.2, 10.4, 10.5) — rozkłady nie są podane wprost — dla każdego eksperta średnia jego ocen projektów z portfela, każdy ekspert z prawdopodobieństwem 1/3; dla ryzyk f3-f5 zmiana znaku (tabl. 10.5), f6 (wpływ na działalność firmy) maksymalizowane — tak opisuje to rozdz. 10.3; tak odtworzone μ i relacje zgadzają się z R10.5 co do jednej komórki.
+
+## 2026-11-22 — prawie dominacje (`dominacje/prawie.py`)
+
+- **ε_ij^k w STEM-DPR** — rozdz. 8.3 (oznaczenia: „minimalna wartość ε taka, że F_ik AFSD(ε) F_jk”), tabl. 1.2 — sposób obliczenia — ε_ij^k = ε_1 z tabl. 1.2 (faktyczny stopień naruszenia FSD); AFSD(ε*) zachodzi wtedy i tylko wtedy, gdy ε_1 ≤ ε*, więc ε_1 jest szukanym minimum — wszystkie 15 wartości AFSD(ε) z tablic 5-8 przykładu 8.1 zgadzają się z tak policzonym ε_1.
+- **S_2 w ASSD** — tabl. 1.2 — zbiór S_2 jest podzbiorem S_1 (tak w tabl. 1.2 i u Leshno, Levy 2002) — liczony dokładnie: na odcinku z S_1 funkcja η⁽²⁾ rośnie liniowo, więc S_2 jest jego końcowym fragmentem, na którym η⁽²⁾ > 0 — zgodne z przykładem 1.11 (S_2 = (3, 4)).
+- **Rozkłady identyczne** — tabl. 1.2 — ‖F_i − F_j‖ = 0, ε nieokreślone — ε = None, AFSD i ASSD nie zachodzą — prawie dominacja, tak jak dominacja, wymaga różnych rozkładów.
+- **Równość ε_1 = ε*** — wzór 1.29 („≤”) — przypadek graniczny — AFSD zachodzi (z tolerancją 1e-6) — przykład 1.10: ε_1 = 0,25 = ε* i druk stwierdza AFSD(0,25).
+
+## 2026-11-22 — dominacje porządkowe (`dominacje/porzadkowe.py`)
+
+- **Skala** — tabl. 1.3 (S = {1, …, z}), przykład 1.15 — sumy (1.32) i norma ‖F_i − F_j‖ obejmują także oceny, których żaden wariant nie uzyskał — skala jest wymaganym parametrem (pełna lista ocen); nie da się jej odtworzyć z nośników — w przykładzie 1.15 norma 2,2 wychodzi tylko przy pełnej 11-stopniowej skali.
+- **Brak warunku „∃ s: różne”** — wzory 1.31-1.32 — w odróżnieniu od tabl. 1.1 definicje porządkowe nie wymagają, by rozkłady się różniły — liczone dosłownie: identyczne rozkłady spełniają OFSD i OSSD; prawie dominacje mają wtedy ε = None — CLAUDE.md: liczyć według definicji.
+- **Licznik ε_2 i (1.34)** — tabl. 1.4 (uwaga transkrypcji: sumy wewnętrzne pojedyncze, choć S_2 zdefiniowano sumami podwójnymi) — sumy pojedyncze w liczniku, podwójne tylko w definicji S_2 — tak liczy przykład 1.15 (tablica 6: dla s = 4 składnik 0,8 − 0,6 = 0,2).
+- **μ dla skali porządkowej (OASSD)** — wzór 1.34 — wartość oczekiwana ocen porządkowych — liczona na umownych wartościach liczbowych ocen — przykład 1.15: μ_1 = 3,6, μ_2 = 2,6 dla ocen 0-10.
+
+## 2026-11-22 — `Problem` i odczyt `.mcf`
+
+- **Format `.mcf`** — instrukcja MCDM, rozdz. 2; pliki `dane/przyklad_8_1.mcf`, `dane/Przyklad_1.mcf` — instrukcja nie opisuje układu pliku — układ odczytany z obu plików (nagłówek n, m; nazwy i kierunki 0/1 kryteriów; nazwy wariantów; bloki wariantów z parami wierszy wartości/prawdopodobieństw), opisany w docstringu `mcf.py`; parser sprawdza nazwy w kolumnie A i zgłasza `BladFormatuMcf` przy niezgodności — jedyne dostępne źródło formatu.
+- **Obserwacje w `.mcf`** — instrukcja MCDM, rozdz. 2.2 (wprowadzanie obserwacji) — na płycie nie ma pliku zapisanego z obserwacji, więc nie wiadomo, czy program zapisuje je jako rozkład — obsługiwany jest tylko zapis rozkładów; obserwacje można podać w API przez `Rozklad.z_obserwacji` — nie zgaduję formatu, którego nie widziałem.
+- **Kryterium porządkowe** — rozdz. 1.3.3; `.mcf` nie zawiera informacji o skali — `Kryterium(skala=...)` tylko w API; `.mcf` daje zawsze kryteria kardynalne — program MCDM nie rozróżnia skal (instrukcja).
+- **Wczytywanie z `bytes`** — wymaganie pracy w Pyodide — plik z przeglądarki nie ma ścieżki — `wczytaj_mcf` przyjmuje też zawartość pliku (`xlrd.open_workbook(file_contents=...)`).
+
+## 2026-11-22 — STEM-DPR (`stem_dpr.py`, `dominacje/regula.py`)
+
+- **SD_T** — wzory 8.4, 8.8 („dominacja zgodna z przyjętym typem funkcji użyteczności”) — które relacje — `RegulaDominacji`: domyślnie cała grupa dla danej postawy (rozdz. 1.3.1), z możliwością zawężenia (rozdz. 10.4: tylko FSD i SSD) i wyłączenia AFSD; TSD/TISD bez warunku średniej, chyba że `warunek_sredniej=True` (wpis o dominacjach kardynalnych) — tak rozdz. 8.1 i 10.4 opisują wybór relacji.
+- **AFSD w STEM-DPR** — rozdz. 8.3, faza wstępna, krok 1; rozdz. 10.4 — rozdz. 10.4 nie wspomina AFSD, a d w tabl. 10.6-10.7 są całkowite — przełącznik `afsd`; dla rozdz. 10 `afsd=False` — tak d z tabl. 10.7 zgadzają się z obliczeniem.
+- **φ dla ε_ij^k < 0,5** — wzór 8.4 — warunek ostry — φ > 0 tylko dla ε < 0,5 (z tolerancją); φ_jj = 0 — zgodnie ze wzorem i z opisem na s. 159 (przedział (0; 0,5)).
+- **Remis w (8.2)** — rozdz. 8.3, krok 1 („wybierz dowolny”) — reguła wyboru — wariant o najniższym numerze; stan iteracji podaje wszystkie warianty z remisem (`StanStem.remis`) — odtwarza wybór a³ w iteracji 2 przykładu 8.1 (remis a³/a⁷), a ten sam wybór pokazuje program w przykładzie 8.2 (rysunek 5).
+- **d dla kryteriów nieaktywnych** — krok 2 (d_sk dla k = 1, …, n) — d liczone dla wszystkich kryteriów, 𝒦 wpływa tylko na (8.2) — tabl. 19 przykładu 8.1 i rysunek 5 przykładu 8.2 pokazują d także dla nieaktywnego f3.
+- **Orientacja wartości w dialogu** — rozdz. 8.2 (założenie: wyższe wartości preferowane), rozdz. 10 (wartości ujemne, δ_4 = −25); instrukcja MCDM, rozdz. 3.2.3 (dla kryterium minimalizowanego maksymalna akceptowana średnia) — w jakich jednostkach podawać δ_k i parametry — wszystkie wartości w dialogu STEM-DPR i INSDECM są w orientacji „wyższe lepsze” (dla kryterium minimalizowanego ze zmienionym znakiem); przeliczenie dla interfejsu: `Kryterium.z_orientacji` — zgodne z książką i rozdz. 10; dla parametrów innych niż średnia (np. P(X ≥ s), odchylenia) przeliczanie na jednostki oryginalne zmienia rodzaj parametru, więc jedna konwencja dla obu metod jest bezpieczniejsza.
+- **Próg δ_k bez wariantów** — krok 6-7 — książka nie przewiduje pustego 𝒜^(l+1) — odpowiedź, po której żaden wariant nie spełnia μ_jk ≥ δ_k, jest odrzucana (`BlednaOdpowiedz`), pytanie pozostaje — δ_k ma być dopuszczalnym pogorszeniem oceny satysfakcjonującej, więc wariant próbny powinien go spełniać; pusty zbiór uniemożliwiłby krok 1.
+- **Wybór kryterium w kroku 6** — krok 6-7 — czy kryterium musi należeć do 𝒦 — dowolne kryterium; 𝒦 := 𝒦 \ {k} (bez zmian, jeśli k ∉ 𝒦) — książka nie ogranicza wyboru.
+- **Pytanie z kroku 3** — krok 3; instrukcja MCDM, rozdz. 3.2 (program go nie zadaje) — `pytaj_o_informacje` (domyślnie True); dodatkowe parametry wariantu próbnego liczone na życzenie — przykład 8.1 zadaje to pytanie, przykład 8.2 (program) nie.
+
+## 2026-11-22 — INSDECM (`insdecm.py`)
+
+- **Przebieg po „Czy akceptujesz zmiany?”** — algorytm, krok 6 (odpowiedź negatywna → krok 2, pozytywna → kroki 7-9); instrukcja MCDM, rozdz. 4.2.3 (Tak → macierz rozwiązań, Nie → niespójności) — źródła się różnią — według algorytmu z książki; przykład 8.4 też przechodzi do kolejnej iteracji po „Tak” — instrukcja przeczy własnemu przykładowi i rys. 8.3.
+- **ε_ij^k w kroku 8** — wzory 8.9-8.10, opis na s. 165 (uwaga transkrypcji: przy S_1 = {F_ik < F_jk} FSD daje ε = 1) — wzór i opis są sprzeczne — ε liczone jak ε_1 Leshno, Levy (tabl. 1.2): ∫_{F_ik > F_jk} |F_ik − F_jk| / ‖F_ik − F_jk‖, czyli 0 przy FSD a^i nad a^j — tekst wprost odwołuje się do Leshno i Levy'ego i opisuje kierunek (niższe ε — silniejsza przewaga a^i), a kolejność wyjaśniania (krok 10) ma sens tylko przy tym kierunku.
+- **Remis ε w kroku 10** — krok 10 — kilka par o tym samym ε (np. wszystkie FSD, ε = 0) — kolejność według (ε, i, j) — deterministycznie, niższe numery najpierw.
+- **Przedział i punkty prezentacji** — wzory 8.11-8.12 (ρ „liczba obserwacji”), s. 165 („wstępnie … np. na poziomie 10”) — ile punktów — s_r dla r = 0, …, ρ (ρ + 1 punktów), ρ = 10 na początek; decydent może zmienić ρ i rodzaj prezentacji (P(X ≤ s) albo P(X ≥ s)) odpowiedzią `ZmianaPrezentacji`; domyślnie P(X ≥ s) — zgodnie ze wzorem; wybór dystrybuanty albo dekumulanty „w zależności od preferencji decydenta”.
+- **Propozycje bez wariantów** — krok 12 — zaostrzenie może odrzucić wszystkie warianty z 𝒜^(l) — takie propozycje są pomijane; pusta lista pozwala tylko na odrzucenie (powrót do kroku 2) — pusty zbiór wariantów uniemożliwia kontynuację.
+- **Zmiana progu w propozycjach dla prawdopodobieństw** — krok 12; instrukcja MCDM, rozdz. 4.2.5 — sposób wyboru nowego progu s — najbliższa |s′ − s| wartość z sumy nośników obu rozkładów, przy której oba warianty spełniają (osłabienie) albo nie spełniają (zaostrzenie) warunku; przy remisie mniejsza — między wartościami nośników P(X ≥ s) się nie zmienia, więc wystarczy sprawdzić te punkty.
+- **Warunek na parametrze spoza macierzy** — krok 4 („sformułowanie dodatkowego warunku”); instrukcja MCDM, rozdz. 4.2.3 (program pozwala wybrać tylko parametr z macierzy); rozdz. 10.5, iteracja 3 (warunek P(ξ_i3 ≥ −30) = 1, choć w macierzy jest „min”) — czy warunek musi dotyczyć prezentowanego parametru — dowolny parametr — tak postępuje rozdz. 10.5; ograniczenie programu jest cechą interfejsu.
+- **Wartość oczekiwana w macierzy** — instrukcja MCDM, rozdz. 4.2.1 („nie można z tej opcji zrezygnować”); tabl. 10.8 (dla f3-f6 tylko „min”) — czy μ jest obowiązkowe — nie; kryterium pominięte w odpowiedzi dostaje μ, pusta lista oznacza brak kolumn — rozdz. 10.5 pokazuje macierz bez μ dla f3-f6.
+- **Zmiana parametrów** — krok 2; przykład 8.3, iteracja 2 (kolumna P{f_i1 ≥ 6} znika po wskazaniu parametrów dla f2) — odpowiedź zastępuje dotychczasowy wybór — w przykładach 8.3-8.4 i 10.5 decydent podaje zestaw na nowo.
+- **Warunek bez wariantów** — krok 4-5 — warunek, którego nie spełnia żaden wariant z 𝒜^(l), jest odrzucany (`BlednaOdpowiedz`) — P^(l+1) byłaby nieokreślona.
+- **Wybór w kroku 13** — krok 13 — odpowiedź: numer wariantu z 𝒜^(l) albo None (powrót do kroku 2) — książka mówi tylko o akceptacji „jednego z rozwiązań”, a wynik ma wskazywać, którego (przykład 8.3: a⁴; rozdz. 10.5: a⁸).

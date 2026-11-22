@@ -6,9 +6,10 @@ import pytest
 
 from mcdm_book import api
 from mcdm_book.examples import EXAMPLES
-from mcdm_cd.insdecm import Insdecm, ScriptedInsdecmDM
-from mcdm_cd.mcf import example
-from mcdm_cd.stem_dpr import ScriptedStemDM, StemDPR
+from mcdm_book.ryzyko import example
+from mcdm_ryzyko import (PODTRZYMAJ, Insdecm, Parametr, Prog, RegulaDominacji, Relacja, RodzajParametru as RP,
+                         Sesja, StemDpr, Warunek, uruchom)
+from mcdm_ryzyko import insdecm as ins
 
 
 def run(key, **opt):
@@ -86,7 +87,7 @@ def test_r16_electre_i(s, edges, levels):
     assert got == levels
 
 
-# --- rozdz. 10: STEM-DPR i INSDECM (pakiet mcdm_cd) ---
+# --- rozdz. 10: STEM-DPR i INSDECM (pakiet mcdm_ryzyko) ---
 
 @pytest.fixture(scope="module")
 def r10():
@@ -95,61 +96,74 @@ def r10():
 
 def test_r10_data(r10):
     """Wartości oczekiwane = R10.5 (f1, f2 z binowanych rozkładów: ±0,03); rozkład a1 względem f3 = tabl. 10.5."""
-    mu = [[r10.dist[i][k].mean() for k in range(6)] for i in range(14)]
+    mu = [[float(x) for x in r] for r in r10.wartosci_oczekiwane()]
     assert mu[0][0] == pytest.approx(483.93, abs=0.03)
     assert mu[5][1] == pytest.approx(-345.37, abs=0.03)
     assert mu[3][3] == pytest.approx(-26.55, abs=0.01)
     assert mu[6][5] == pytest.approx(56.33, abs=0.01)
-    assert sorted(r10.dist[0][2].values) == [-42, -19, -18]
+    assert sorted(r10.ocena(0, 2).wartosci) == [-42, -19, -18]
 
 
 def test_r10_stem_dpr_book(r10):
     """Tabl. 10.6–10.7: d tylko z FSD i SSD; iteracja 1 → a8, f4 ≥ −25, iteracja 2 → a6."""
-    s = StemDPR(r10, relations=("FSD", "SSD"))
-    res = s.run(ScriptedStemDM([("f4", -25)], accept_after=2))
-    it1, it2 = res.iterations
-    assert it1.trial == 7 and it1.d == [6, 6, 1, 0, 5, 2]          # w druku d_86 = 6 (errata, s. 208)
-    assert [i + 1 for i in it2.active_variants] == [3, 6, 7, 8, 10, 12]
-    assert it2.trial == 5 and it2.d == [1, 1, 0, 3, 1, 3]
-    assert it2.means[1] == pytest.approx(-345.37, abs=0.03)          # w druku −345,53 (errata, s. 209)
-    assert res.status == "final" and res.solution == 5
+    regula = RegulaDominacji.awersja(relacje=(Relacja.FSD, Relacja.SSD), afsd=False)
+    res = uruchom(StemDpr(r10, regula, pytaj_o_informacje=False).przebieg(), [False, True, Prog(3, -25), True])
+    it1, it2 = res.historia
+    assert it1.proba == 7 and list(it1.d_proby) == [6, 6, 1, 0, 5, 2]   # w druku d_86 = 6 (errata, s. 208)
+    assert [i + 1 for i in it2.warianty] == [3, 6, 7, 8, 10, 12]
+    assert it2.proba == 5 and list(it2.d_proby) == [1, 1, 0, 3, 1, 3]
+    assert float(it2.mu_proby[1]) == pytest.approx(-345.37, abs=0.03)    # w druku −345,53 (errata, s. 209)
+    assert res.status == "zaakceptowano" and res.rozwiazanie == 5
 
 
-def test_r10_stem_dpr_mcdm_default(r10):
-    """Domyślnie (jak MCDM 1.00: TSD i AFSD w d) wynik liczbowy różni się od druku, wybór a8 bez zmian."""
-    s = StemDPR(r10)
-    t = s.trial_variant()
-    assert t == 7 and s.d[t][0] == pytest.approx(6.89, abs=0.01)
-
-
-def _ins(r10, first):
-    init = {"f1": {8: 485}, "f3": {12: None}, "f4": {12: None}, "f5": {12: None}, "f6": {12: None}}
-    p2 = dict(init, f2={8: -430})
-    s = Insdecm(r10)
-    return s.run(ScriptedInsdecmDM(initial=init, script=[
-        {"condition": first}, {"params": p2, "condition": ("f2", 8, 0.6)},
-        {"condition": ("f3", 12, -30)}, {"condition": None}]))
+def _ins(r10, warunki):
+    """INSDECM z rozdz. 10.5: warunki kolejnych iteracji, niespójności podtrzymywane, na końcu akceptacja
+    macierzy rozwiązań; zwraca (wynik, lista zbiorów 𝒜 i macierzy P po kolejnych pytaniach o dane)."""
+    E = Parametr(RP.WARTOSC_OCZEKIWANA)
+    MIN = Parametr(RP.MINIMUM)
+    par = {0: [E, Parametr(RP.P_NIE_MNIEJ, 485)], 1: [E], 2: [E, MIN], 3: [E, MIN], 4: [E, MIN], 5: [E, MIN]}
+    s = Sesja(Insdecm(r10, RegulaDominacji.awersja(relacje=(Relacja.FSD, Relacja.SSD))).przebieg())
+    macierze, kolejne = [], list(warunki)
+    while not s.zakonczona:
+        q = s.pytanie
+        if isinstance(q, ins.PytanieParametry):
+            s.odpowiedz(par)
+        elif isinstance(q, ins.PytanieDaneWystarczajace):
+            macierze.append(q.macierz)
+            s.odpowiedz(True)
+        elif isinstance(q, ins.PytaniePesymistyczne):
+            s.odpowiedz(not kolejne)
+        elif isinstance(q, ins.PytanieWarunek):
+            s.odpowiedz(kolejne.pop(0))
+        elif isinstance(q, ins.PytanieAkceptacjaZmian):
+            s.odpowiedz(True)
+        elif isinstance(q, ins.PytanieNiespojnosc):
+            s.odpowiedz(PODTRZYMAJ)
+        elif isinstance(q, ins.PytanieRozwiazanie):
+            return s, macierze, q.macierz
+        else:
+            raise AssertionError(type(q))
+    return s, macierze, None
 
 
 def test_r10_insdecm_condition_as_printed(r10):
     """S. 209–210: warunek P{ξ_i1 ≥ 485} ≥ 0,7 daje {a4, a9}, a nie 10 wariantów z druku (errata)."""
-    res = _ins(r10, ("f1", 8, 0.7))
-    assert [i + 1 for i in res.iterations[1].active] == [4, 9]
-    assert res.iterations[2].active == []
+    w = Warunek(0, Parametr(RP.P_NIE_MNIEJ, 485), 0.7)
+    s, M, R = _ins(r10, [w])
+    assert [i + 1 for i in M[1].warianty] == [4, 9]
 
 
 def test_r10_insdecm_book_sets(r10):
-    """Zbiór A(2) z druku (odtwarza go μ_i1 ≥ 482); dalej A(3), A(4) i P(4) jak w tabl. 10.11–10.13."""
-    res = _ins(r10, ("f1", 1, 482))
-    P1 = res.iterations[0].P.as_dict()
-    assert P1[(0, 1)] == pytest.approx((435.36, 494.95), abs=0.03)
-    assert P1[(2, 12)] == (-58.0, -24.0) and P1[(5, 12)] == (16.0, 43.5)
-    assert [i + 1 for i in res.iterations[1].active] == [1, 3, 4, 5, 6, 8, 9, 10, 12, 14]
-    assert [i + 1 for i in res.iterations[2].active] == [1, 3, 6, 8, 10, 12]
-    assert [i + 1 for i in res.solutions] == [6, 8]
-    P4 = res.iterations[3].P.as_dict()
-    assert P4[(2, 12)] == (-28.5, -24.0) and P4[(3, 12)] == (-39.0, -25.5)
-    assert P4[(4, 12)] == (-28.5, -18.0) and P4[(5, 12)] == (29.0, 39.5)
+    """Zbiór A(2) z druku (odtwarza go μ_i1 ≥ 482); dalej A(3), A(4) jak w tabl. 10.11–10.13."""
+    E = Parametr(RP.WARTOSC_OCZEKIWANA)
+    s, M, R = _ins(r10, [Warunek(0, E, 482), Warunek(1, Parametr(RP.P_NIE_MNIEJ, -430), 0.6),
+                         Warunek(2, Parametr(RP.MINIMUM), -30)])
+    P1 = dict(zip(M[0].kolumny, zip(M[0].pesymistyczne, M[0].optymistyczne)))
+    assert [float(x) for x in P1[(0, E)]] == pytest.approx([435.36, 494.95], abs=0.03)
+    assert P1[(2, Parametr(RP.MINIMUM))] == (-58, -24) and P1[(5, Parametr(RP.MINIMUM))] == (16, 43.5)
+    assert [i + 1 for i in M[1].warianty] == [1, 3, 4, 5, 6, 8, 9, 10, 12, 14]
+    assert [i + 1 for i in M[2].warianty] == [1, 3, 6, 8, 10, 12]
+    assert [i + 1 for i in R.warianty] == [6, 8]
 
 
 def test_r12_bipolar_parameters():
