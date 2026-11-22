@@ -20,6 +20,10 @@ python -m mcdm_book methods | example [ID] | run zadanie.json
 
 `mcdm_ryzyko/` to kopia pakietu z `p4welrog/mcdm_ryzyko` (stan 7175e13), napisanego metodą clean room według książki, bez dostępu do kodu programów z płyty. Nie edytuj go tutaj: zmiany robi się w `mcdm_ryzyko` (sesja bez dostępu do kodu VBA i do dawnego portu `mcdm_cd`) i kopiuje cały katalog pakietu z dokumentami `README.md`, `DECYZJE.md`, `ROZBIEZNOSCI.md`. Dawny `mcdm_cd` (port kodu VBA) usunięto; nie odtwarzaj go ani jego opcji zgodności z programami. Połączenie z `mcdm_book`: `mcdm_book/ryzyko.py` (rozkłady z JSON, test dominacji, zadania z płyty), `mcdm_book/ato_dpr.py`, most strony `web/web.py`.
 
+## Skill
+
+`.claude/skills/wspomaganie-decyzji-wielokryterialnych/SKILL.md` to skill prowadzący decydenta z użyciem pakietów (instalacja z tego repozytorium). Po zmianie API, nazw metod albo opcji popraw go w tym samym commicie i sprawdź jego fragmenty kodu. Kopia na koncie claude.ai aktualizuje się osobno.
+
 ## Konwencje
 
 - Wynik każdej metody: `scores`, `ranks`, `ranking`, `best`, `steps`, `notes`. Przyjęte interpretacje i odstępstwa od druku idą do `notes`, a nie są ukrywane.
