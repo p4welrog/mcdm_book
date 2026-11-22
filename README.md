@@ -5,7 +5,7 @@ Implementacje metod z książki „Wielokryterialne wspomaganie decyzji. Metody 
 | Pakiet | Zawartość |
 |---|---|
 | `mcdm_book` | metody addytywne (rozdz. 2: SAW, scoring, FSAW, SMART, SMARTER); AHP i metody pokrewne (rozdz. 3: AHP, REMBRANDT, rozmyty AHP Mikhailova, ANP z syntezą BOCR, rozmyta ANP Changa); MACBETH, ZAPROS, ZAPROS III i UniComBOS (rozdz. 4, 13); ELECTRE I, Iv, Is, III, TRI i wersje z dominacjami stochastycznymi (rozdz. 5); PROMETHEE I, II, EXPROM, wersje z wetem i z dominacjami stochastycznymi (rozdz. 6); TOPSIS, rozmyty TOPSIS, VIKOR, DEMATEL, metoda hybrydowa DEMATEL–ANP–VIKOR, BIPOLAR i BIPOLAR z dominacjami (rozdz. 7); programowanie kompromisowe i dobór metody (rozdz. 9.3); mierniki zgodności ekspertów (zbiór R9.6); interfejs JSON |
-| `mcdm_cd` | programy z płyty CD (K. Targiel) napisane od nowa w Pythonie: StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM) oraz ATO-DPR (8.5) |
+| `mcdm_cd` | port algorytmów programów z płyty CD (K. Targiel): StDom 1.09b (dominacje stochastyczne) i MCDM 1.00 (STEM-DPR, INSDECM), oraz ATO-DPR (8.5) według książki; port zostanie zastąpiony implementacją napisaną od nowa według książki |
 
 ## Instalacja i testy
 
