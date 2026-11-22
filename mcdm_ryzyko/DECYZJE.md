@@ -2,6 +2,8 @@
 
 Format wpisu: data — miejsce w książce (rozdział, wzór, strona) — problem — decyzja — uzasadnienie.
 
+Wpisy do 22.11.2026 powstały w repozytorium `p4welrog/mcdm_ryzyko` (stan 7175e13, zarchiwizowane); ścieżki `tests/dane/` i `dane/` odnoszą się do niego. Od 22.11.2026 pakiet rozwija się w `mcdm_book`: testy w `tests/ryzyko/`, dane `.mcf` w `mcdm_book/data/`, a werdykty raportów StDom z arkuszy przykładów 5.19, 6.13, 6.15 w `tests/ryzyko/dane/raporty_stdom.json` (same rozkłady i werdykty, bez arkuszy z płyty).
+
 ## 2026-11-22 — ustalenia wstępne (zatwierdzone przez Pawła)
 
 - **Nazwy w API** — cały pakiet — język identyfikatorów — polskie nazwy bez znaków diakrytycznych (`Rozklad`, `wartosc_oczekiwana`) — nazwy odpowiadają pojęciom z książki, docstringi i tak są po polsku.

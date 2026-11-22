@@ -8,7 +8,7 @@ Pakiety Pythona `mcdm_book` (metody wielokryterialne, interfejs JSON, ATO-DPR) i
 
 ```bash
 pip install -e ".[test,mcf]"      # pytest i xlrd (pliki .mcf z płyty)
-pytest -q
+pytest -q                         # razem z tests/ryzyko; doctesty: pytest -q --doctest-modules mcdm_ryzyko
 python web/build.py               # składa index.html i web/app_examples.json; po każdej zmianie w pakietach lub web/
 python tests/e2e_browser.py       # test strony w Playwright (opcje bez CDN w nagłówku skryptu)
 python -m mcdm_book methods | example [ID] | run zadanie.json
@@ -16,9 +16,16 @@ python -m mcdm_book methods | example [ID] | run zadanie.json
 
 `index.html` i `web/app_examples.json` są w repozytorium (Pages serwuje `index.html` z `main`), więc commit zmian w pakietach zawiera też przebudowany `index.html`. CI (`.github/workflows/testy.yml`) uruchamia `pytest` i sprawdza, czy `index.html` i `web/app_examples.json` odpowiadają źródłom.
 
-## `mcdm_ryzyko`: kopia z prywatnego repozytorium
+## `mcdm_ryzyko`: clean room
 
-`mcdm_ryzyko/` to kopia pakietu z `p4welrog/mcdm_ryzyko` (stan 7175e13), napisanego metodą clean room według książki, bez dostępu do kodu programów z płyty. Nie edytuj go tutaj: zmiany robi się w `mcdm_ryzyko` (sesja bez dostępu do kodu VBA i do dawnego portu `mcdm_cd`) i kopiuje cały katalog pakietu z dokumentami `README.md`, `DECYZJE.md`, `ROZBIEZNOSCI.md`. Dawny `mcdm_cd` (port kodu VBA) usunięto; nie odtwarzaj go ani jego opcji zgodności z programami. Połączenie z `mcdm_book`: `mcdm_book/ryzyko.py` (rozkłady z JSON, test dominacji, zadania z płyty), `mcdm_book/ato_dpr.py`, most strony `web/web.py`.
+`mcdm_ryzyko/` (dominacje stochastyczne, STEM-DPR, INSDECM) powstał metodą clean room w repozytorium `p4welrog/mcdm_ryzyko` (zarchiwizowane, stan 7175e13) i od 22.11.2026 rozwija się tutaj; testy są w `tests/ryzyko/`. Dawny `mcdm_cd` był portem kodu VBA programów z płyty; usunięto go razem z historią i nie wolno go odtwarzać ani jego opcji zgodności z programami.
+
+Przy zmianach w `mcdm_ryzyko/`:
+- **Wolno korzystać** z książki i przykładów z płyty (`../mcdm_book_tekst/rozdzialy`, `przyklady_cd`), instrukcji użytkownika programów (`../mcdm_book_tekst/materialy/pk_mcdm_instrukcja.md`, `pk_stdom_instrukcja.md`), plików danych (`mcdm_book/data`) i literatury naukowej, z podaniem źródła w kodzie.
+- **Nie wolno korzystać** z kodu VBA programów, ich dokumentacji technicznej (klasy, procedury, zmienne), dawnego portu i opisów jego zgodności z programami. Te materiały są w prywatnym `p4welrog/mcdm_archiwum`; nie podłączaj go do sesji i nie szukaj w sieci kodu tych programów ani ich portów.
+- Zmiany algorytmów robi sesja, która nie miała styczności z tymi materiałami. Integracja (`mcdm_book/ryzyko.py`, `mcdm_book/ato_dpr.py`, `web/web.py`, testy wywołań) tego nie wymaga.
+- Każda decyzja interpretacyjna (książka niejednoznaczna albo sprzeczna) idzie do `mcdm_ryzyko/DECYZJE.md` z miejscem w książce i uzasadnieniem; wynik niezgodny z drukiem albo raportem programu — do `mcdm_ryzyko/ROZBIEZNOSCI.md`. Opcja odtwarzająca druk tylko wtedy, gdy uzasadnia ją tekst książki lub instrukcji.
+- Testy podają miejsce źródła wartości oczekiwanej; dane testowe to same liczby (JSON), bez tekstu z książki i płyty.
 
 ## Skill
 

@@ -35,7 +35,7 @@ Procedury są generatorami pytań. `Sesja` prowadzi dialog krok po kroku
 ```python
 from mcdm_ryzyko import wczytaj_mcf, StemDpr, RegulaDominacji, Sesja, Prog
 
-problem = wczytaj_mcf("dane/przyklad_8_1.mcf")
+problem = wczytaj_mcf("mcdm_book/data/przyklad_8_1.mcf")
 sesja = Sesja(StemDpr(problem, RegulaDominacji.awersja()).przebieg())
 sesja.pytanie            # PytanieInformacje ze stanem iteracji (μ, d, wektor idealny)
 sesja.odpowiedz(True)    # → następne pytanie
@@ -47,9 +47,12 @@ INSDECM: `Insdecm(problem, regula).przebieg()`, warunki `Warunek(k, Parametr(...
 
 ## Testy
 
+Testy pakietu są w `tests/ryzyko/` repozytorium `mcdm_book` (dane: `tests/ryzyko/dane/`, pliki `.mcf` z `mcdm_book/data/`):
+
 ```
 pip install -e .[mcf,test]
-pytest --doctest-modules mcdm_ryzyko tests
+pytest -q tests/ryzyko
+pytest -q --doctest-modules mcdm_ryzyko
 ```
 
 Każdy test podaje miejsce w książce lub na płycie, z którego pochodzi oczekiwana wartość.
